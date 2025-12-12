@@ -1,0 +1,280 @@
+/* Base styles */
+:root {
+  --student-primary: hsl(215, 100%, 50%);
+  --student-primary-hover: hsl(215, 100%, 45%);
+  --student-background: hsl(210, 33%, 98%);
+  --student-card: hsl(0, 0%, 100%);
+  --student-border: hsl(214, 32%, 91%);
+  --student-muted: hsl(214, 32%, 91%);
+  --student-text: hsl(214, 60%, 21%);
+  --toast-success-bg: hsl(143, 85%, 96%);
+  --toast-success-border: hsl(145, 92%, 91%);
+  --toast-success-text: hsl(140, 100%, 27%);
+  --toast-error-bg: hsl(0, 85%, 96%);
+  --toast-error-border: hsl(0, 92%, 91%);
+  --toast-error-text: hsl(0, 84%, 60%);
+  --radius: 0.5rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --student-primary: hsl(215, 100%, 60%);
+    --student-primary-hover: hsl(215, 100%, 65%);
+    --student-background: hwb(219 8% 82%);
+    --student-card: hsl(222, 47%, 11%);
+    --student-border: hsl(217, 33%, 17%);
+    --student-muted: hsl(215, 28%, 17%);
+    --student-text: hsl(210, 40%, 98%);
+    --toast-success-bg: hsla(143, 85%, 25%, 0.3);
+    --toast-success-border: hsl(145, 92%, 30%);
+    --toast-success-text: hsl(140, 100%, 85%);
+    --toast-error-bg: hsla(0, 85%, 25%, 0.3);
+    --toast-error-border: hsl(0, 92%, 30%);
+    --toast-error-text: hsl(0, 84%, 85%);
+  }
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+  line-height: 1.5;
+}
+
+.student-page {
+  min-height: 100vh;
+  background-color: var(--student-background);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.student-card {
+  background-color: var(--student-card);
+  border-radius: var(--radius);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.05);
+  width: 100%;
+  max-width: 400px;
+  padding: 2rem;
+  border: 1px solid var(--student-border);
+  position: relative;
+}
+
+.student-logo {
+  width: 60px;
+  height: 60px;
+  margin: 0 auto 1.5rem;
+  background-color: var(--student-primary);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+}
+
+.student-heading {
+  color: var(--student-text);
+  text-align: center;
+  font-weight: 700;
+  font-size: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.student-subheading {
+  color: var(--student-text);
+  opacity: 0.6;
+  text-align: center;
+  font-size: 0.875rem;
+  margin-bottom: 2rem;
+}
+
+.student-input-wrapper {
+  position: relative;
+  margin-bottom: 1rem;
+}
+
+.student-input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  padding-left: 2.5rem;
+  background-color: transparent;
+  border: 1px solid var(--student-border);
+  border-radius: var(--radius);
+  font-size: 0.875rem;
+  color: var(--student-text);
+  transition: border 0.2s;
+}
+
+.student-input:focus {
+  outline: none;
+  border: 1px solid var(--student-primary);
+  box-shadow: 0 0 0 2px var(--student-primary/0.1);
+}
+
+.student-input-icon {
+  position: absolute;
+  left: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--student-text);
+  opacity: 0.5;
+}
+
+.student-password-toggle {
+  position: absolute;
+  right: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--student-text);
+  opacity: 0.5;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.student-checkbox-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.student-checkbox {
+  width: 1rem;
+  height: 1rem;
+}
+
+.student-checkbox-label {
+  font-size: 0.875rem;
+  color: var(--student-text);
+  opacity: 0.8;
+}
+
+.student-button {
+  width: 100%;
+  background-color: var(--student-primary);
+  color: white;
+  border: none;
+  border-radius: var(--radius);
+  padding: 0.75rem 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.student-button:hover {
+  background-color: var(--student-primary-hover);
+}
+
+.student-button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* Register link styles */
+.register-link {
+  margin-top: 1.5rem;
+  text-align: center;
+  font-size: 0.875rem;
+  color: var(--student-text);
+  opacity: 0.8;
+}
+
+.register-link a {
+  color: var(--student-primary);
+  text-decoration: none;
+  font-weight: 500;
+  margin-left: 0.25rem;
+  transition: color 0.2s, text-decoration 0.2s;
+}
+
+.register-link a:hover {
+  text-decoration: underline;
+  color: var(--student-primary-hover);
+}
+
+/* Toast notification */
+.toast {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  max-width: 350px;
+  transform: translateX(400px);
+  transition: transform 0.3s ease;
+  z-index: 1000;
+  visibility: hidden;
+}
+
+.toast.show {
+  transform: translateX(0);
+  visibility: visible;
+}
+
+.toast-content {
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  font-size: 0.875rem;
+}
+
+.toast.success .toast-content {
+  background-color: var(--toast-success-bg);
+  border: 1px solid var(--toast-success-border);
+  color: var(--toast-success-text);
+}
+
+.toast.error .toast-content {
+  background-color: var(--toast-error-bg);
+  border: 1px solid var(--toast-error-border);
+  color: var(--toast-error-text);
+}
+
+@media (max-width: 640px) {
+  .student-card {
+    max-width: 90%;
+    padding: 1.5rem;
+  }
+}
+
+
+.login-errors {
+  list-style: none;
+  padding: 10px 15px;
+  margin: 0 0 20px 0;
+  background-color: rgba(220, 53, 69, 0.1);
+  border-left: 4px solid #dc3545;
+  border-radius: 4px;
+}
+
+.login-errors li {
+  color: #dc3545;
+  font-size: 14px;
+  margin: 5px 0;
+}
+
+.forgot-password-wrapper {
+    text-align: right;
+    margin-bottom: 15px;
+    margin-top: -5px;
+    padding-right: 10px;
+}
+
+.forgot-password-link {
+    color: #4f46e5;
+    font-size: 0.75rem;
+    text-decoration: none;
+    transition: color 0.2s;
+    display: inline-block;
+}
+
+.forgot-password-link:hover {
+    color: #4338ca;
+    text-decoration: underline;
+}

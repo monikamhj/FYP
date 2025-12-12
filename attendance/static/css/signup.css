@@ -1,0 +1,120 @@
+/* Base styles for input wrappers */
+.signup-input-wrapper {
+  position: relative;
+  margin-bottom: 20px;
+  width: 100%;
+}
+
+/* Icon inside input wrapper */
+.input-icon {
+  position: absolute;
+  left: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #4299e1;
+  font-size: 18px;
+  z-index: 1;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  height: 100%;
+}
+
+/* Override vertical alignment for textarea icons */
+.signup-input-wrapper textarea + .input-icon {
+  height: auto;
+  top: 25px;
+  transform: none;
+}
+
+/* Add padding to inputs with icons */
+.signup-input.with-icon {
+  padding: 12px 12px 12px 45px;
+  width: 100%;
+  box-sizing: border-box;
+  height: 48px;
+  line-height: 24px;
+}
+
+/* Adjust for textarea specifically */
+.signup-input-wrapper textarea.with-icon {
+  padding-top: 25px;
+  min-height: 100px;
+  height: auto;
+  line-height: 1.5;
+}
+
+/* Password toggle icon on the right side */
+.toggle-password {
+  position: absolute;
+  right: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: pointer;
+  color: #4299e1;
+  font-size: 18px;
+  z-index: 1;
+}
+
+/* Adjust for select and textarea specifically */
+.signup-input-wrapper select.with-icon,
+.signup-input-wrapper textarea.with-icon {
+  padding-left: 45px;
+}
+
+.signup-input-wrapper textarea.with-icon {
+  padding-top: 15px;
+  min-height: 100px;
+  height: auto;
+}
+
+/* Override vertical alignment for textarea icons */
+.signup-input-wrapper textarea + .input-icon {
+  top: 15px;
+  transform: none;
+}
+
+/* Base styles for inputs */
+.signup-input {
+  width: 100%;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 15px;
+  transition: all 0.3s ease;
+  background-color: #242e4c;
+  color: #ffffff;
+}
+
+/* Select specific styles */
+.signup-input-wrapper select.with-icon {
+  height: 48px;
+  line-height: 48px;
+  appearance: none;
+  background-color: #242e4c;
+  color: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding-right: 12px;
+}
+
+/* Custom select styling */
+select {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg width='12' height='12' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M2 4l4 4 4-4' stroke='%23ffffff' stroke-width='2' fill='none' fill-rule='evenodd'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 12px;
+}
+
+.signup-input:focus {
+  outline: none;
+  border-color: #4299e1;
+  box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.2);
+}
+
+/* Ensure password fields have enough padding on the right for the toggle icon */
+#password, #confirm-password {
+  padding-right: 45px;
+}

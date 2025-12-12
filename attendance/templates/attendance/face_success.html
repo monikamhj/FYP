@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Attendance Status</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f6f9;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            color: #333;
+        }
+
+        .card {
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            text-align: center;
+            max-width: 450px;
+        }
+
+        .card h2 {
+            color: #2563eb;
+            margin-bottom: 15px;
+        }
+
+        .status-checkin {
+            color: #10b981; /* green */
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        .status-checkout {
+            color: #ef4444; /* red */
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        .card p {
+            font-size: 18px;
+            margin-bottom: 8px;
+        }
+
+        .time-box {
+            background: #e5e7eb;
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 16px;
+            margin-top: 12px;
+        }
+
+        .card a {
+            margin-top: 25px;
+            display: inline-block;
+            text-decoration: none;
+            background: #2563eb;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            transition: background 0.3s ease;
+        }
+
+        .card a:hover {
+            background: #1e40af;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="card">
+
+        {% if action == "checkin" %}
+            <h2 class="status-checkin">✔ Check-In Successful!</h2>
+            <p>Welcome, <strong>{{ student.name }}</strong></p>
+            <div class="time-box">
+                Checked in at: <strong>{{ check_in_time }}</strong>
+            </div>
+
+        {% elif action == "checkout" %}
+            <h2 class="status-checkout">⏳ Check-Out Successful!</h2>
+            <p>Goodbye, <strong>{{ student.name }}</strong></p>
+            <div class="time-box">
+                Checked out at: <strong>{{ check_out_time }}</strong>
+            </div>
+
+        {% else %}
+            <h2>Attendance Recorded</h2>
+            <p><strong>{{ student.name }}</strong></p>
+        {% endif %}
+
+        <p>ID: {{ student.student_id }}</p>
+
+        <a href="{% url 'login_view' %}">Go to Login</a>
+    </div>
+</body>
+</html>

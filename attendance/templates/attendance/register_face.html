@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Face Registration</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f4f4f8;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+            color: #333;
+        }
+
+        h2 {
+            margin-bottom: 20px;
+            font-size: 28px;
+            color: #222;
+        }
+
+        #container {
+            background: #fff;
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            width: 100%;
+            max-width: 600px;
+        }
+
+        #live-feed {
+            border-radius: 12px;
+            border: 3px solid #e5e7eb;
+            width: 100%;
+            max-width: 500px;
+            height: auto;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        }
+
+        #progress {
+            font-size: 18px;
+            margin-bottom: 16px;
+        }
+
+        #start-btn, #quit-btn {
+            padding: 12px 28px;
+            font-size: 16px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+        }
+
+        #start-btn {
+            background-color: #2563eb;
+            color: white;
+            margin-right: 10px;
+        }
+
+        #start-btn:hover {
+            background-color: #1e40af;
+            transform: translateY(-1px);
+        }
+
+        #start-btn:disabled {
+            background-color: #93c5fd;
+            cursor: not-allowed;
+        }
+
+        #quit-btn {
+            background-color: #ef4444;
+            color: white;
+        }
+
+        #quit-btn:hover {
+            background-color: #b91c1c;
+            transform: translateY(-1px);
+        }
+
+        #footer {
+            margin-top: 40px;
+            font-size: 14px;
+            color: #888;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <h2>👤 Face Registration for Student ID: <strong>{{ student_id }}</strong></h2>
+        <img id="live-feed" src="{% url 'camera_feed' %}" alt="Camera Feed" />
+        <p id="progress">📸 Images Captured: <span id="capture-count">0</span>/10</p>
+
+        <button id="start-btn">Start Capture</button>
+        <button id="quit-btn">Quit ❌</button>
+    </div>
+
+    <div id="footer">
+        &copy; {{ now|date:"Y" }} Smart Attendance System. All rights reserved.
+    </div>
+
+    <script>
+        const studentId = "{{ student_id }}";
+        let isCapturing = false;
+        let interval = null;
+
+        const startBtn = document.getElementById("start-btn");
+        const quitBtn = document.getElementById("quit-btn");
+        const progressText = document.getElementById("capture-count");
+        const liveFeed = document.getElementById("live-feed");
+
+        startBtn.addEventListener("click", () => {
+            if (isCapturing) return;
+            isCapturing = true;
+            startBtn.disabled = true;
+            startBtn.innerText = "Capturing...";
+
+            // 🔧 Hide live stream to free camera stream for backend
+            liveFeed.src = "";
+            liveFeed.style.display = "none";
+
+            fetch(`/start_capture_api/${studentId}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                }
+            })
+            .then(() => {
+                interval = setInterval(() => {
+                    fetch(`/check_progress/${studentId}/`)
+                        .then(res => res.json())
+                        .then(data => {
+                            progressText.innerText = data.count;
+                            if (data.done) {
+                                clearInterval(interval);
+                                startBtn.innerText = "Done ✅";
+                                setTimeout(() => {
+                                    window.location.href = `/face_success/${studentId}/`;
+                                }, 1000);
+                            }
+                        })
+                        .catch(err => {
+                            console.error("Error:", err);
+                            clearInterval(interval);
+                            startBtn.innerText = "Error ❌";
+                        });
+                }, 1000);
+            })
+            .catch(err => {
+                console.error("Failed to start capture:", err);
+                startBtn.innerText = "Error ❌";
+            });
+        });
+
+        quitBtn.addEventListener("click", () => {
+    if (!isCapturing) return;
+
+    fetch(`/cancel_capture/${studentId}/`)
+        .then(() => {
+            clearInterval(interval);
+            isCapturing = false;
+            startBtn.disabled = false;
+            startBtn.innerText = "Start Capture";
+            progressText.innerText = "0";
+
+            // ✅ Restore camera stream
+            liveFeed.src = "{% url 'camera_feed' %}";
+            liveFeed.style.display = "block";
+
+            alert("Capture cancelled.");
+        })
+                .catch(err => {
+                    console.error("Failed to cancel capture:", err);
+                });
+        });
+    </script>
+</body>
+</html>

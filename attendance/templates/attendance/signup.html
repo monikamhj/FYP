@@ -1,0 +1,102 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Login</title>
+    <link rel="stylesheet" href="{% static 'css/signup.css' %}">
+    <!-- Add Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+  <div class="signup-container">
+      <div class="signup-card">
+          <div class="signup-logo">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-user-plus"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" x2="19" y1="8" y2="14"/><line x1="22" x2="16" y1="11" y2="11"/></svg>
+          </div>
+
+          <h1 class="signup-heading">Student Registration</h1>
+          <p class="signup-subheading">Complete the form below to register a new student in our system. All fields are required.</p>
+
+          <form id="signup-form" method="POST" action="{% url 'register_view' %}">
+            {% csrf_token %}
+            <div class="signup-input-wrapper">
+                <i class="fa fa-user input-icon"></i>
+                <input type="text" id="name" name="name" class="signup-input with-icon" placeholder="Full Name" required />
+            </div>
+            <div class="signup-input-wrapper">
+                <i class="fa fa-calendar input-icon"></i>
+                <input type="date" id="dob" name="dob" class="signup-input with-icon" required />
+            </div>
+            <div class="signup-input-wrapper">
+                <i class="fa fa-graduation-cap input-icon"></i>
+                <select id="course" name="course" class="signup-input with-icon" required>
+                    <option value="" disabled selected>Select your course</option>
+                    <option value="bsc-cs">BSc (Hons) Computer Science</option>
+                    <option value="bsc-ibm">BSc (Hons) International Business Management</option>
+                    <option value="bsc-cyber">BSc (Hons) Cyber Security</option>
+                    <option value="imba">International Masters of Business Administration</option>
+                </select>
+            </div>
+            <div class="signup-input-wrapper">
+                <i class="fa fa-envelope input-icon"></i>
+                <input type="email" id="email" name="email" class="signup-input with-icon" placeholder="Email" required />
+            </div>
+            <div class="signup-input-wrapper">
+                <i class="fa fa-phone input-icon"></i>
+                <input type="text" id="phone_number" name="phone_number" class="signup-input with-icon" placeholder="Phone Number" required />
+            </div>
+            <div class="signup-input-wrapper">
+                <i class="fa fa-home input-icon"></i>
+                <textarea id="address" name="address" class="signup-input signup-textarea with-icon" placeholder="Address" required></textarea>
+            </div>
+            <div class="signup-input-wrapper">
+                <i class="fa fa-lock input-icon"></i>
+                <input type="password" id="password" name="password" class="signup-input with-icon" placeholder="Password" required />
+                <i class="fa fa-eye-slash toggle-password" onclick="togglePasswordVisibility('password')"></i>
+            </div>
+            <div class="signup-input-wrapper">
+                <i class="fa fa-lock input-icon"></i>
+                <input type="password" id="confirm-password" name="confirm_password" class="signup-input with-icon" placeholder="Confirm Password" required />
+                <i class="fa fa-eye-slash toggle-password" onclick="togglePasswordVisibility('confirm-password')"></i>
+            </div>
+            <div class="signup-checkbox-wrapper">
+                <input type="checkbox" id="terms" name="terms" class="signup-checkbox" required />
+                <label for="terms" class="signup-checkbox-label">I agree to the Terms and Conditions</label>
+            </div>
+            <button type="submit" id="signup-button" class="signup-button">Register</button>
+        </form>
+
+
+          <p class="login-link">
+              Already have an account? <a href="{% url 'login_view' %}">Login</a>
+          </p>
+
+          <div id="toast" class="toast">
+              <div class="toast-content">
+                  <p id="toast-message"></p>
+              </div>
+          </div>
+      </div>
+  </div>
+  <script src="{% static 'js/signup.js' %}"></script>
+  
+  <script>
+    function togglePasswordVisibility(inputId) {
+      const passwordInput = document.getElementById(inputId);
+      const toggleIcon = passwordInput.nextElementSibling;
+      
+      if (passwordInput.type === "password") {
+        passwordInput.type = "text";
+        toggleIcon.classList.remove("fa-eye-slash");
+        toggleIcon.classList.add("fa-eye");
+      } else {
+        passwordInput.type = "password";
+        toggleIcon.classList.remove("fa-eye");
+        toggleIcon.classList.add("fa-eye-slash");
+      }
+    }
+  </script>
+</body>
+</html>
