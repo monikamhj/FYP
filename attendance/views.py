@@ -322,27 +322,39 @@ def check_capture_progress(request, student_id):
 def face_success(request, student_id):
     student = Student.objects.get(student_id=student_id)
     today = date.today()
-
-    # Get latest attendance entry for today
-    last_record = Attendance.objects.filter(student=student, date=today).order_by('-id').first()
-
     now = timezone.now()
 
-    # First action → CHECK-IN
+    # Latest attendance entry for today
+    last_record = (
+        Attendance.objects
+        .filter(student=student, date=today)
+        .order_by('-id')
+        .first()
+    )
+
+    # Case 1: no record today → first CHECK-IN
     if last_record is None:
-        Attendance.objects.create(student=student, check_in=now)
+        Attendance.objects.create(
+            student=student,
+            date=today,
+            check_in=now
+        )
         status = "Check-In Successful"
 
-    # If check-in exists but check-out missing → CHECK-OUT
+    # Case 2: open session → CHECK-OUT
     elif last_record.check_out is None:
         last_record.check_out = now
         last_record.save()
         status = "Check-Out Successful"
 
-    # If both exist → new session (check-in again)
+    # Case 3: last session closed → start NEW CHECK-IN
     else:
-        Attendance.objects.create(student=student, check_in=now)
-        status = "Check-In Recorded (New Session)"
+        Attendance.objects.create(
+            student=student,
+            date=today,
+            check_in=now
+        )
+        status = "Check-In Successful"
 
     return render(request, "attendance/face_success.html", {
         "student": student,

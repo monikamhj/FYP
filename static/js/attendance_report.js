@@ -11,7 +11,14 @@ document.addEventListener("DOMContentLoaded", function () {
   // Create a map for fast lookup of attendance info by date
   const attendanceMap = {};
   statusData.forEach(record => {
-    attendanceMap[record.date] = record; // store full record (status, check_in, check_out)
+    const dateKey = record.date;  // e.g. "2025-12-21"
+    // always keep the latest record for that date
+    attendanceMap[dateKey] = {
+      date: dateKey,
+      check_in: record.check_in,
+      check_out: record.check_out,
+      status: record.status
+    };
   });
 
   // Calculate first day of the month and total days

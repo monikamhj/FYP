@@ -28,7 +28,7 @@ detector = MTCNN()
 
 # Get student details
 if len(sys.argv) < 8:
-    print("Error❌: All fields are required (name, email, phone, address, password, dob, course)")
+    print("Error ❌: All fields are required (name, email, phone, address, password, dob, course)")
     sys.exit(1)
 
 name, email, phone, address, password, dob, course = sys.argv[1:8]

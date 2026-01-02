@@ -1,0 +1,27 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block content %}
+<h1>Attendance sessions for {{ student.name }} on {{ date }}</h1>
+
+<table class="adminlist">
+  <thead>
+    <tr>
+      <th>Check in</th>
+      <th>Check out</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for s in sessions %}
+    <tr>
+      <td>{{ s.check_in }}</td>
+      <td>{{ s.check_out }}</td>
+    </tr>
+  {% empty %}
+    <tr><td colspan="2">No sessions.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+<p><a href="{% url 'admin:attendance_attendance_changelist' %}">Back to list</a></p>
+{% endblock %}

@@ -55,31 +55,41 @@ def load_known_faces():
 
 def mark_attendance(student, min_interval_seconds=60):
     """
-    Mark check-in or check-out depending on today's attendance record.
-    Enforces a minimum interval before checkout.
+    Mark check-in or check-out for the latest session today.
+    If the latest session is closed, start a new one with check-in.
+    Optionally enforce a minimum interval before checkout.
     """
     today = date.today()
     now = timezone.now()
 
-    attendance_record, created = Attendance.objects.get_or_create(
-        student=student,
-        date=today,
-        defaults={'check_in': now}
+    # latest record for today
+    last_record = (
+        Attendance.objects
+        .filter(student=student, date=today)
+        .order_by('-id')
+        .first()
     )
 
-    if created:
-        status = "Check-In"
-    elif attendance_record.check_out is None:
-        elapsed_seconds = (now - attendance_record.check_in).total_seconds()
+    # No record today -> first CHECK-IN
+    if last_record is None:
+        Attendance.objects.create(student=student, date=today, check_in=now)
+        status = "Check-In Successful"
+
+    # Open session -> CHECK-OUT (with optional wait)
+    elif last_record.check_out is None:
+        elapsed_seconds = (now - last_record.check_in).total_seconds()
         if elapsed_seconds >= min_interval_seconds:
-            attendance_record.check_out = now
-            attendance_record.save()
-            status = "Check-Out"
+            last_record.check_out = now
+            last_record.save()
+            status = "Check-Out Successful"
         else:
             wait_seconds = int(min_interval_seconds - elapsed_seconds)
             status = f"Wait {wait_seconds}s before checkout"
+
+    # Last session closed -> start NEW CHECK-IN
     else:
-        status = "Already Completed"
+        Attendance.objects.create(student=student, date=today, check_in=now)
+        status = "Check-In Successful"
 
     return status, now
 
@@ -137,6 +147,16 @@ def recognize_face():
                     status, _ = mark_attendance(student, min_interval_seconds=60)
                     recognized_faces[matched_id]["status"] = status
                     print(f"✅ {status} for {student.name}")
+                    
+                    # ⬇️ keep window visible briefly, then quit
+                    
+                    if status in ["Check-In Successful", "Check-Out Successful"]:
+                        cv2.imshow("Face Recognition", frame)   # show final frame
+                        cv2.waitKey(2000)                       # 2000 ms = 2 second
+                        cap.release()
+                        cv2.destroyAllWindows()
+                        return
+
 
                 except Student.DoesNotExist:
                     print(f"❌ Student with ID {matched_id} not found.")
