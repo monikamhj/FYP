@@ -6,7 +6,7 @@ from django.urls import path
 from django.utils.html import format_html
 
 from django.db.models import Min, Max, F
-
+from django.contrib.admin.views.main import ChangeList
 from import_export import resources
 from import_export.admin import ExportMixin
 
@@ -55,45 +55,42 @@ class StudentAdmin(ExportMixin, admin.ModelAdmin):
 # ATTENDANCE ADMIN (daily summary + details)
 # -----------------------
 
+from django.db.models import Min, Max
+
 @admin.register(Attendance)
 class AttendanceAdmin(ExportMixin, admin.ModelAdmin):
     resource_class = AttendanceResource
 
-    # use custom accessors but still list real model instances
-    list_display = ("student", "date", "first_check_in", "last_check_out", "details_link")
+    # We will render our own summary table, so keep list_display simple
+    list_display = ("student", "date", "check_in", "check_out")
     search_fields = ("student__name", "student__student_id")
     list_filter = ("date", "student")
     readonly_fields = ("student", "date", "check_in", "check_out")
     ordering = ("-date", "student__name")
 
-    def get_queryset(self, request):
+    change_list_template = "attendance/admin/attendance_summary_changelist.html"
+
+    def get_daily_summary(self):
         """
-        Return real Attendance instances but annotate each with
-        the first check_in and last check_out for that student+date.
-        There will still be multiple rows, but all rows for the same
-        student+date share the same first/last times.
+        Returns one row per (student, date) with first_in and last_out.
         """
-        qs = super().get_queryset(request)
-        return qs.annotate(
-            first_in=Min("check_in"),
-            last_out=Max("check_out"),
+        return (
+            Attendance.objects
+            .values("student__student_id", "student__name", "date")
+            .annotate(
+                first_in=Min("check_in"),
+                last_out=Max("check_out"),
+            )
+            .order_by("-date", "student__name")
         )
 
-    def first_check_in(self, obj):
-        return obj.first_in
-    first_check_in.short_description = "First check-in"
+    def changelist_view(self, request, extra_context=None):
+        extra_context = extra_context or {}
+        extra_context["daily_summary"] = self.get_daily_summary()
+        return super().changelist_view(request, extra_context=extra_context)
 
-    def last_check_out(self, obj):
-        return obj.last_out
-    last_check_out.short_description = "Last check-out"
+    # ---------- details page for a single day ----------
 
-    # link to detail view to see all sessions for that student+date
-    def details_link(self, obj):
-        url = f"details/{obj.student.pk}/{obj.date.isoformat()}/"
-        return format_html('<a href="{}">Details</a>', url)
-    details_link.short_description = "Sessions"
-
-    # add custom URL for the "Details" page
     def get_urls(self):
         urls = super().get_urls()
         custom = [
@@ -105,23 +102,25 @@ class AttendanceAdmin(ExportMixin, admin.ModelAdmin):
         ]
         return custom + urls
 
-    # view that renders the sessions table
     def daily_details_view(self, request, student_id, day):
-        student = get_object_or_404(Student, pk=student_id)
+        student = get_object_or_404(Student, student_id=student_id)
         target_date = date.fromisoformat(day)
         sessions = (
             Attendance.objects
             .filter(student=student, date=target_date)
             .order_by("check_in")
         )
-
         context = dict(
             self.admin_site.each_context(request),
             student=student,
             date=target_date,
             sessions=sessions,
         )
-        return render(request, "admin/daily_attendance_details.html", context)
+        return render(
+            request,
+            "attendance/admin/daily_attendance_details.html",
+            context,
+        )
 
 
 

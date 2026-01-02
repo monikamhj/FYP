@@ -2,35 +2,97 @@
 {% load i18n %}
 
 {% block content %}
-  <h1>
-    {% trans "Attendance sessions for" %} {{ student.name }}
-    {% trans "on" %} {{ date }}
-  </h1>
 
-  <table class="adminlist">
-    <thead>
+<style>
+  /* Page title */
+  .session-title {
+    margin-bottom: 20px;
+    font-size: 24px;
+    font-weight: 600;
+  }
+
+  /* Table styling */
+  table.adminlist {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 15px;
+    margin-top: 10px;
+  }
+
+  table.adminlist thead th {
+    background-color: #f5f5f5;
+    padding: 12px;
+    text-align: left;
+    border-bottom: 2px solid #ddd;
+  }
+
+  table.adminlist tbody td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #e0e0e0;
+  }
+
+  table.adminlist tbody tr:hover {
+    background-color: #f9f9f9;
+  }
+
+  /* Empty state */
+  .no-sessions {
+    text-align: center;
+    font-style: italic;
+    color: #666;
+  }
+
+  /* Back link */
+  .back-link {
+    margin-top: 20px;
+    display: inline-block;
+    font-size: 14px;
+  }
+
+  .back-link a {
+    color: #1a73e8;
+    text-decoration: none;
+    font-weight: 500;
+  }
+
+  .back-link a:hover {
+    text-decoration: underline;
+  }
+</style>
+
+<h1 class="session-title">
+  {% trans "Attendance Sessions for" %} {{ student.name }}
+  {% trans "on" %} {{ date }}
+</h1>
+
+<table class="adminlist">
+  <thead>
+    <tr>
+      <th>{% trans "Check-in Time" %}</th>
+      <th>{% trans "Check-out Time" %}</th>
+    </tr>
+  </thead>
+
+  <tbody>
+    {% for s in sessions %}
       <tr>
-        <th>{% trans "Check in" %}</th>
-        <th>{% trans "Check out" %}</th>
+        <td>{{ s.check_in }}</td>
+        <td>{{ s.check_out }}</td>
       </tr>
-    </thead>
-    <tbody>
-      {% for s in sessions %}
-        <tr>
-          <td>{{ s.check_in }}</td>
-          <td>{{ s.check_out }}</td>
-        </tr>
-      {% empty %}
-        <tr>
-          <td colspan="2">{% trans "No sessions for this day." %}</td>
-        </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+    {% empty %}
+      <tr>
+        <td colspan="2" class="no-sessions">
+          {% trans "No sessions recorded for this day." %}
+        </td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
 
-  <p style="margin-top: 1rem;">
-    <a href="{% url 'admin:attendance_attendance_changelist' %}">
-      {% trans "Back to attendance list" %}
-    </a>
-  </p>
+<p class="back-link">
+  <a href="{% url 'admin:attendance_attendance_changelist' %}">
+    ← {% trans "Back to attendance list" %}
+  </a>
+</p>
+
 {% endblock %}
