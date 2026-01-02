@@ -1,0 +1,95 @@
+{% extends "admin/change_list.html" %}
+{% load i18n %}
+
+{% block result_list %}
+
+<style>
+  /* Title styling */
+  .attendance-title {
+    margin: 20px 0 10px;
+    font-size: 22px;
+    font-weight: 600;
+  }
+
+  /* Table styling */
+  table.adminlist {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 15px;
+    margin-top: 15px;
+  }
+
+  table.adminlist thead th {
+    background-color: #f5f5f5;
+    padding: 12px;
+    text-align: left;
+    border-bottom: 2px solid #ddd;
+    white-space: nowrap;
+  }
+
+  table.adminlist tbody td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #e0e0e0;
+    vertical-align: middle;
+  }
+
+  table.adminlist tbody tr:hover {
+    background-color: #f9f9f9;
+  }
+
+  table.adminlist a {
+    color: #1a73e8;
+    font-weight: 500;
+    text-decoration: none;
+  }
+
+  table.adminlist a:hover {
+    text-decoration: underline;
+  }
+
+  .no-records {
+    text-align: center;
+    font-style: italic;
+    color: #666;
+  }
+</style>
+
+<h2 class="attendance-title">
+  {% trans "Daily Attendance" %}
+</h2>
+
+<table class="adminlist">
+  <thead>
+    <tr>
+      <th>{% trans "Student" %}</th>
+      <th>{% trans "Date" %}</th>
+      <th>{% trans "First Check-in" %}</th>
+      <th>{% trans "Last Check-out" %}</th>
+      <th>{% trans "Sessions" %}</th>
+    </tr>
+  </thead>
+
+  <tbody>
+    {% for row in daily_summary %}
+      <tr>
+        <td>{{ row.student__name }}</td>
+        <td>{{ row.date }}</td>
+        <td>{{ row.first_in }}</td>
+        <td>{{ row.last_out }}</td>
+        <td>
+          <a href="{% url 'admin:attendance_daily_details' student_id=row.student__student_id day=row.date %}">
+            {% trans "View Details" %}
+          </a>
+        </td>
+      </tr>
+    {% empty %}
+      <tr>
+        <td colspan="5" class="no-records">
+          {% trans "No attendance records available." %}
+        </td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{% endblock %}
