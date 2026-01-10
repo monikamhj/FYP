@@ -56,6 +56,10 @@ class StudentAdmin(ExportMixin, admin.ModelAdmin):
 # -----------------------
 
 from django.db.models import Min, Max
+from django import forms
+from django.contrib.admin.widgets import AdminDateWidget, AdminTimeWidget
+from .models import Attendance
+
 
 @admin.register(Attendance)
 class AttendanceAdmin(ExportMixin, admin.ModelAdmin):
@@ -65,7 +69,6 @@ class AttendanceAdmin(ExportMixin, admin.ModelAdmin):
     list_display = ("student", "date", "check_in", "check_out")
     search_fields = ("student__name", "student__student_id")
     list_filter = ("date", "student")
-    readonly_fields = ("student", "date", "check_in", "check_out")
     ordering = ("-date", "student__name")
 
     change_list_template = "attendance/admin/attendance_summary_changelist.html"

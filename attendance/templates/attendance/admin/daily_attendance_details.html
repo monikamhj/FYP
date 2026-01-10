@@ -4,14 +4,12 @@
 {% block content %}
 
 <style>
-  /* Page title */
   .session-title {
     margin-bottom: 20px;
     font-size: 24px;
     font-weight: 600;
   }
 
-  /* Table styling */
   table.adminlist {
     width: 100%;
     border-collapse: collapse;
@@ -24,25 +22,36 @@
     padding: 12px;
     text-align: left;
     border-bottom: 2px solid #ddd;
+    white-space: nowrap;
   }
 
   table.adminlist tbody td {
     padding: 10px 12px;
     border-bottom: 1px solid #e0e0e0;
+    vertical-align: middle;
   }
 
   table.adminlist tbody tr:hover {
     background-color: #f9f9f9;
   }
 
-  /* Empty state */
   .no-sessions {
     text-align: center;
     font-style: italic;
     color: #666;
   }
 
-  /* Back link */
+  .actions a {
+    color: #1a73e8;
+    font-weight: 500;
+    text-decoration: none;
+    margin-right: 6px;
+  }
+
+  .actions a:hover {
+    text-decoration: underline;
+  }
+
   .back-link {
     margin-top: 20px;
     display: inline-block;
@@ -70,6 +79,7 @@
     <tr>
       <th>{% trans "Check-in Time" %}</th>
       <th>{% trans "Check-out Time" %}</th>
+      <th>{% trans "Actions" %}</th>
     </tr>
   </thead>
 
@@ -78,10 +88,19 @@
       <tr>
         <td>{{ s.check_in }}</td>
         <td>{{ s.check_out }}</td>
+        <td class="actions">
+          <a href="{% url 'admin:attendance_attendance_change' s.pk %}">
+            {% trans "Edit" %}
+          </a>
+          |
+          <a href="{% url 'admin:attendance_attendance_delete' s.pk %}">
+            {% trans "Delete" %}
+          </a>
+        </td>
       </tr>
     {% empty %}
       <tr>
-        <td colspan="2" class="no-sessions">
+        <td colspan="3" class="no-sessions">
           {% trans "No sessions recorded for this day." %}
         </td>
       </tr>
