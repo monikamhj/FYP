@@ -35,21 +35,11 @@
     background-color: #f9f9f9;
   }
 
-  .no-sessions {
+  .no-breaks {
     text-align: center;
     font-style: italic;
     color: #666;
-  }
-
-  .actions a {
-    color: #1a73e8;
-    font-weight: 500;
-    text-decoration: none;
-    margin-right: 6px;
-  }
-
-  .actions a:hover {
-    text-decoration: underline;
+    padding: 40px;
   }
 
   .back-link {
@@ -70,38 +60,30 @@
 </style>
 
 <h1 class="session-title">
-  {% trans "Attendance Sessions for" %} {{ student.name }}
+  {% trans "Breaks for" %} {{ student.name }}
   {% trans "on" %} {{ date }}
 </h1>
 
 <table class="adminlist">
   <thead>
     <tr>
-      <th>{% trans "Check-in Time" %}</th>
-      <th>{% trans "Check-out Time" %}</th>
-      <th>{% trans "Actions" %}</th>
+      <th>{% trans "Break Start" %}</th>
+      <th>{% trans "Break End" %}</th>
+      <th>{% trans "Duration" %}</th>
     </tr>
   </thead>
 
   <tbody>
-    {% for s in sessions %}
+    {% for b in breaks %}
       <tr>
-        <td>{{ s.check_in }}</td>
-        <td>{{ s.check_out }}</td>
-        <td class="actions">
-          <a href="{% url 'admin:attendance_attendance_change' s.pk %}">
-            {% trans "Edit" %}
-          </a>
-          |
-          <a href="{% url 'admin:attendance_attendance_delete' s.pk %}">
-            {% trans "Delete" %}
-          </a>
-        </td>
+        <td>{{ b.start }}</td>
+        <td>{{ b.end }}</td>
+        <td>{{ b.duration }}</td>
       </tr>
     {% empty %}
       <tr>
-        <td colspan="3" class="no-sessions">
-          {% trans "No sessions recorded for this day." %}
+        <td colspan="3" class="no-breaks">
+          {% trans "No breaks on this day." %}
         </td>
       </tr>
     {% endfor %}

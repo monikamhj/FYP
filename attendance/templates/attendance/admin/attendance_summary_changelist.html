@@ -41,10 +41,19 @@
     color: #1a73e8;
     font-weight: 500;
     text-decoration: none;
+    margin-right: 8px;
   }
 
   table.adminlist a:hover {
     text-decoration: underline;
+  }
+
+  .delete-link {
+    color: #d93025 !important;
+  }
+
+  .delete-link:hover {
+    text-decoration: underline !important;
   }
 
   .no-records {
@@ -65,7 +74,8 @@
       <th>{% trans "Date" %}</th>
       <th>{% trans "First Check-in" %}</th>
       <th>{% trans "Last Check-out" %}</th>
-      <th>{% trans "Sessions" %}</th>
+      <th>{% trans "Breaks" %}</th>
+      <th>{% trans "Actions" %}</th>
     </tr>
   </thead>
 
@@ -77,19 +87,40 @@
         <td>{{ row.first_in }}</td>
         <td>{{ row.last_out }}</td>
         <td>
-          <a href="{% url 'admin:attendance_daily_details' student_id=row.student__student_id day=row.date %}">
-            {% trans "View Details" %}
+          <a href="{% url 'admin:attendance_daily_breaks' student_id=row.student__student_id day=row.date %}">
+            {% trans "View Breaks" %}
+          </a>
+        </td>
+        <td>
+          <!-- Direct links to filtered admin pages - works perfectly -->
+          <a href="{% url 'admin:attendance_attendance_changelist' %}?student__student_id__exact={{ row.student__student_id }}&date__exact={{ row.date }}" 
+             title="Edit sessions for this day">
+            ✏️ Edit
+          </a>
+          <a href="#" 
+             class="delete-link"
+             onclick="deleteDayAttendance({{ row.student__student_id }}, '{{ row.date }}'); return false;" 
+             title="Delete ALL sessions for this day">
+            🗑️ Delete
           </a>
         </td>
       </tr>
     {% empty %}
       <tr>
-        <td colspan="5" class="no-records">
+        <td colspan="6" class="no-records">
           {% trans "No attendance records available." %}
         </td>
       </tr>
     {% endfor %}
   </tbody>
 </table>
+
+<script>
+  function deleteDayAttendance(studentId, date) {
+    if (confirm(`Delete ALL attendance sessions for this student on ${date}? This cannot be undone.`)) {
+      window.location.href = `{% url 'admin:attendance_attendance_changelist' %}?student__student_id__exact=${studentId}&date__exact=${date}&delete_all=1`;
+    }
+  }
+</script>
 
 {% endblock %}

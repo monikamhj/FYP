@@ -5,12 +5,13 @@ from django.shortcuts import render, get_object_or_404
 from django.urls import path
 from django.utils.html import format_html
 
-from django.db.models import Min, Max, F
-from django.contrib.admin.views.main import ChangeList
+from django.db.models import Min, Max
 from import_export import resources
 from import_export.admin import ExportMixin
 
 from .models import Student, Attendance, PasswordReset, LeaveRequest
+
+
 # -----------------------
 # IMPORT-EXPORT RESOURCES
 # -----------------------
@@ -18,7 +19,6 @@ from .models import Student, Attendance, PasswordReset, LeaveRequest
 class StudentResource(resources.ModelResource):
     class Meta:
         model = Student
-
 
 class AttendanceResource(resources.ModelResource):
     class Meta:
@@ -52,14 +52,8 @@ class StudentAdmin(ExportMixin, admin.ModelAdmin):
 
 
 # -----------------------
-# ATTENDANCE ADMIN (daily summary + details)
+# ATTENDANCE ADMIN (daily summary + breaks)
 # -----------------------
-
-from django.db.models import Min, Max
-from django import forms
-from django.contrib.admin.widgets import AdminDateWidget, AdminTimeWidget
-from .models import Attendance
-
 
 @admin.register(Attendance)
 class AttendanceAdmin(ExportMixin, admin.ModelAdmin):
@@ -74,9 +68,7 @@ class AttendanceAdmin(ExportMixin, admin.ModelAdmin):
     change_list_template = "attendance/admin/attendance_summary_changelist.html"
 
     def get_daily_summary(self):
-        """
-        Returns one row per (student, date) with first_in and last_out.
-        """
+        """Returns one row per (student, date) with first_in and last_out."""
         return (
             Attendance.objects
             .values("student__student_id", "student__name", "date")
@@ -92,39 +84,55 @@ class AttendanceAdmin(ExportMixin, admin.ModelAdmin):
         extra_context["daily_summary"] = self.get_daily_summary()
         return super().changelist_view(request, extra_context=extra_context)
 
-    # ---------- details page for a single day ----------
-
+    # ---------- breaks page for a single day ----------
     def get_urls(self):
         urls = super().get_urls()
         custom = [
             path(
-                "details/<int:student_id>/<slug:day>/",
-                self.admin_site.admin_view(self.daily_details_view),
-                name="attendance_daily_details",
+                "breaks/<int:student_id>/<slug:day>/",
+                self.admin_site.admin_view(self.daily_breaks_view),
+                name="attendance_daily_breaks",
             ),
         ]
         return custom + urls
 
-    def daily_details_view(self, request, student_id, day):
+    def daily_breaks_view(self, request, student_id, day):
         student = get_object_or_404(Student, student_id=student_id)
         target_date = date.fromisoformat(day)
+        
+        # Get all sessions for this student on this date
         sessions = (
             Attendance.objects
             .filter(student=student, date=target_date)
             .order_by("check_in")
         )
+        
+        # Compute breaks between consecutive sessions
+        breaks = []
+        for i in range(1, len(sessions)):
+            prev = sessions[i-1]
+            curr = sessions[i]
+            if prev.check_out and curr.check_in:
+                break_start = prev.check_out
+                break_end = curr.check_in
+                break_duration = break_end - break_start
+                breaks.append({
+                    'start': break_start,
+                    'end': break_end,
+                    'duration': str(break_duration),
+                })
+        
         context = dict(
             self.admin_site.each_context(request),
             student=student,
             date=target_date,
-            sessions=sessions,
+            breaks=breaks,
         )
         return render(
             request,
-            "attendance/admin/daily_attendance_details.html",
+            "attendance/admin/daily_attendance_details.html",  # reuse your existing template
             context,
         )
-
 
 
 # -----------------------
