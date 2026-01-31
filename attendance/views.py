@@ -53,6 +53,7 @@ def student_login_view(request):
 
     return render(request, 'attendance/login.html')
 
+
 def attendance_report_view(request):
     if 'student_id' not in request.session:
         return redirect('login_view')
@@ -64,52 +65,86 @@ def attendance_report_view(request):
     month = int(request.GET.get('month', today.month))
     year = int(request.GET.get('year', today.year))
 
-    last_day = min(date(year, month, calendar.monthrange(year, month)[1]), today)
-    all_dates = [date(year, month, day) for day in range(1, last_day.day + 1)]
+    # Calculate days in month
+    _, num_days = calendar.monthrange(year, month)
+    last_day_date = date(year, month, num_days)
+    
+    # We only show records up to 'today' if viewing current month
+    limit_date = min(last_day_date, today)
+    all_dates = [date(year, month, day) for day in range(1, limit_date.day + 1)]
 
-    # Fetch all attendance records for this student in the selected month
+    # 1. Fetch Attendance
     attendance_records = Attendance.objects.filter(
-        student=student,
-        date__year=year,
-        date__month=month
+        student=student, date__year=year, date__month=month
     ).values('date', 'check_in', 'check_out')
-
-    # Map dates to their attendance info
     attendance_map = {rec['date']: rec for rec in attendance_records}
 
-    # Build attendance_status list for template and JSON
+    # 2. Fetch Approved Leave Requests
+    leaves = LeaveRequest.objects.filter(
+        student=student, 
+        from_date__lte=last_day_date, 
+        to_date__gte=date(year, month, 1)
+    )
+
+    # 3. Comprehensive Nepali Public Holidays 2026
+    public_holidays = {
+        date(2026, 1, 11): "Prithvi Jayanti",
+        date(2026, 1, 14): "Maghe Sankranti",
+        date(2026, 1, 30): "Martyrs' Day",
+        date(2026, 2, 15): "Maha Shivaratri",
+        date(2026, 2, 18): "Gyalpo Lhosar",
+        date(2026, 2, 19): "Prajatantra Diwas",
+        date(2026, 3, 2): "Holi (Hilly Region)",
+        date(2026, 3, 3): "Holi (Terai Region)",
+        date(2026, 3, 8): "Women's Day",
+        date(2026, 4, 14): "Nepali New Year",
+        date(2026, 5, 1): "Labour Day / Buddha Jayanti",
+        date(2026, 5, 29): "Republic Day",
+        date(2026, 9, 19): "Constitution Day",
+        date(2026, 10, 21): "Dashain (Vijaya Dashami)",
+        date(2026, 11, 11): "Bhai Tika (Tihar)",
+    }
+
     attendance_status = []
     for d in all_dates:
         record = attendance_map.get(d)
-        if record:
-            status = 'Present' if record['check_in'] else 'Absent'
-            check_in = record['check_in'].strftime("%H:%M:%S") if record['check_in'] else None
-            check_out = record['check_out'].strftime("%H:%M:%S") if record['check_out'] else None
+        on_leave = leaves.filter(from_date__lte=d, to_date__gte=d).exists()
+        holiday_name = public_holidays.get(d)
+        is_saturday = (d.weekday() == 5)
+
+        # Determine Logic Status
+        if is_saturday:
+            status = 'Weekend'
+        elif holiday_name:
+            status = f'Holiday ({holiday_name})'
+        elif on_leave:
+            status = 'On Leave'
+        elif record:
+            status = 'Present'
         else:
             status = 'Absent'
-            check_in = None
-            check_out = None
 
         attendance_status.append({
             'date': d.strftime("%Y-%m-%d"),
+            'day': d.strftime("%A"),
             'status': status,
-            'check_in': check_in,
-            'check_out': check_out
+            'check_in': record['check_in'].strftime("%H:%M:%S") if (record and record['check_in']) else "—",
+            'check_out': record['check_out'].strftime("%H:%M:%S") if (record and record['check_out']) else "—",
         })
 
-    total_present = sum(1 for r in attendance_status if r['status'] == 'Present')
-    total_absent = sum(1 for r in attendance_status if r['status'] == 'Absent')
-
+    # Export Logic
     export_format = request.GET.get('format')
-    if export_format in ['pdf', 'excel']:
+    if export_format == 'excel':
         df = pd.DataFrame(attendance_status)
-        if export_format == 'excel':
-            response = HttpResponse(content_type='application/vnd.ms-excel')
-            response['Content-Disposition'] = f'attachment; filename=attendance_{year}_{month}.xlsx'
-            df.to_excel(response, index=False)
-            return response
-        elif export_format == 'pdf':
-            return export_attendance_pdf(request, student, attendance_status, month, year)
+        df.columns = ['Date', 'Day', 'Status', 'Check-In', 'Check-Out']
+        response = HttpResponse(content_type='application/vnd.ms-excel')
+        response['Content-Disposition'] = f'attachment; filename=attendance_{year}_{month}.xlsx'
+        df.to_excel(response, index=False)
+        return response
+    
+    elif export_format == 'pdf':
+        # Ensure your utils.py accepts the new status field in attendance_status
+        return export_attendance_pdf(request, student, attendance_status, month, year)
 
     return render(request, 'attendance/attendance_report.html', {
         'student': student,
@@ -118,8 +153,9 @@ def attendance_report_view(request):
         'selected_year': year,
         'year_range': list(range(today.year - 5, today.year + 1)),
         'month_list': list(range(1, 13)),
-        'total_present': total_present,
-        'total_absent': total_absent
+        'total_present': sum(1 for r in attendance_status if r['status'] == 'Present'),
+        'total_absent': sum(1 for r in attendance_status if r['status'] == 'Absent'),
+        'total_leave': sum(1 for r in attendance_status if r['status'] == 'On Leave'),
     })
 
 def ForgotPassword(request):
