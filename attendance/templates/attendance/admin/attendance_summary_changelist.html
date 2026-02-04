@@ -92,15 +92,17 @@
           </a>
         </td>
         <td>
-          <!-- Direct links to filtered admin pages - works perfectly -->
-          <a href="{% url 'admin:attendance_attendance_changelist' %}?student__student_id__exact={{ row.student__student_id }}&date__exact={{ row.date }}" 
-             title="Edit sessions for this day">
-            ✏️ Edit
-          </a>
-          <a href="#" 
+          <!-- Edit button: Goes to ADD form with student and date pre-filled -->
+          <a href="{% url 'admin:attendance_attendance_add' %}?_changelist_filters=student__student_id__exact%3D{{ row.student__student_id }}%26date__exact%3D{{ row.date|date:'Y-m-d' }}&student={{ row.student__student_id }}&date={{ row.date|date:'Y-m-d' }}"
+          style="color: #1a73e8; margin-right: 10px; font-weight: 500;"
+          title="Add/edit attendance for {{ row.student__name }} on {{ row.date }}">
+          ✏️ Edit
+  </a>
+          
+          <!-- Delete button -->
+          <a href="{% url 'admin:attendance_bulk_delete' %}?student_id={{ row.student__student_id }}&date={{ row.date|date:'Y-m-d' }}"
              class="delete-link"
-             onclick="deleteDayAttendance({{ row.student__student_id }}, '{{ row.date }}'); return false;" 
-             title="Delete ALL sessions for this day">
+             onclick="return confirm('Delete all attendance for {{ row.student__name }} on {{ row.date }}?');">
             🗑️ Delete
           </a>
         </td>
