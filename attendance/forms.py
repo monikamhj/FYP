@@ -1,5 +1,6 @@
 from django import forms
 from .models import Student
+from .models import LeaveRequest
 import re
 
 class StudentForm(forms.ModelForm):
@@ -40,3 +41,13 @@ class StudentForm(forms.ModelForm):
         if password and confirm_password and password != confirm_password:
             self.add_error('confirm_password', "Passwords do not match.")
 
+class LeaveRequestForm(forms.ModelForm):
+    class Meta:
+        model = LeaveRequest
+        fields = ['category', 'from_date', 'to_date', 'reason']
+        widgets = {
+            'category': forms.Select(attrs={'class': 'form-select'}),
+            'from_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-input'}),
+            'to_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-input'}),
+            'reason': forms.Textarea(attrs={'class': 'form-textarea', 'placeholder': 'Reason...'}),
+        }

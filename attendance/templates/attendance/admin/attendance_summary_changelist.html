@@ -92,15 +92,12 @@
           </a>
         </td>
         <td>
-          <!-- Direct links to filtered admin pages - works perfectly -->
-          <a href="{% url 'admin:attendance_attendance_changelist' %}?student__student_id__exact={{ row.student__student_id }}&date__exact={{ row.date }}" 
-             title="Edit sessions for this day">
+          <a href="{% url 'admin:attendance_attendance_changelist' %}?student__id__exact={{ row.student_id }}&date__year={{ row.date.year }}&date__month={{ row.date.month }}&date__day={{ row.date.day }}">
             ✏️ Edit
           </a>
-          <a href="#" 
-             class="delete-link"
-             onclick="deleteDayAttendance({{ row.student__student_id }}, '{{ row.date }}'); return false;" 
-             title="Delete ALL sessions for this day">
+          
+          <a href="{% url 'admin:attendance_attendance_changelist' %}?student__id__exact={{ row.student_id }}&date__year={{ row.date.year }}&date__month={{ row.date.month }}&date__day={{ row.date.day }}" 
+             class="delete-link">
             🗑️ Delete
           </a>
         </td>

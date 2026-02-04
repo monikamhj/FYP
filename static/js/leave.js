@@ -17,6 +17,7 @@ document.addEventListener('DOMContentLoaded', function() {
   const leaveForm = document.getElementById('leaveForm');
   const reasonInput = document.getElementById('reason');
   const toast = document.getElementById('toast');
+  const categoryInput = document.getElementById('category');
 
   // Initialize calendars
   updateCalendar(fromCalendarDays, currentFromMonth, 'from');
@@ -50,11 +51,18 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 
   // ✅ Form submission with AJAX
+  // ✅ Form submission with AJAX
   leaveForm.addEventListener('submit', function(e) {
     e.preventDefault();
 
     if (!fromDate) {
       showToast('Error', 'Please select a start date for your leave', 'error');
+      return;
+    }
+
+    // NEW: Check if category is selected
+    if (!categoryInput.value) {
+      showToast('Error', 'Please select a leave category', 'error');
       return;
     }
 
@@ -75,18 +83,22 @@ document.addEventListener('DOMContentLoaded', function() {
       body: JSON.stringify({
         from_date: fromDateStr,
         to_date: toDateStr,
-        reason: reasonInput.value.trim()
+        reason: reasonInput.value.trim(),
+        category: categoryInput.value // <--- THIS WAS MISSING
       })
     })
     .then(res => res.json())
     .then(data => {
       showToast('Success', data.message, 'success');
+      // Reset form
       fromDate = null;
       toDate = null;
       reasonInput.value = '';
+      categoryInput.value = ''; // Reset the dropdown too
       updateCalendar(fromCalendarDays, currentFromMonth, 'from');
       updateCalendar(toCalendarDays, currentToMonth, 'to');
     })
+    // ... rest of your code
     .catch(err => {
       showToast('Error', 'Something went wrong. Try again.', 'error');
       console.error(err);

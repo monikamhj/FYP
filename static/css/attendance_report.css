@@ -1,4 +1,4 @@
-/* 1. Global Reset & Typography */
+/* Base Styles */
 * {
   margin: 0;
   padding: 0;
@@ -9,48 +9,28 @@
 body {
   background-color: #1a2035;
   color: #f9f9ff;
-  line-height: 1.6;
 }
 
-/* 2. Layout Structure */
+/* Layout */
 .main-container {
   display: flex;
   min-height: 100vh;
 }
 
-/* 3. Sidebar Styling */
+/* Sidebar */
 .sidebar {
   width: 260px;
   background-color: #242e4c;
-  color: white;
   position: fixed;
-  top: 0;
-  left: 0;
-  bottom: 0;
+  top: 0; left: 0; bottom: 0;
   display: flex;
   flex-direction: column;
   z-index: 100;
-  box-shadow: 4px 0 10px rgba(0, 0, 0, 0.2);
 }
 
-.logo-container {
-  padding: 30px 20px;
-  text-align: center;
-}
-
-.sidebar-title {
-  font-weight: 800;
-  font-size: 24px;
-  letter-spacing: 1px;
-}
-
-.sidebar-menu {
-  flex: 1;
-  padding: 10px 15px;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
+.logo-container { padding: 30px 20px; text-align: center; }
+.sidebar-title { font-size: 24px; font-weight: 700; color: white; }
+.sidebar-menu { flex: 1; padding: 0 15px; }
 
 .sidebar-item {
   display: flex;
@@ -60,51 +40,27 @@ body {
   text-decoration: none;
   color: #a0aec0;
   border-radius: 10px;
-  transition: all 0.3s ease;
+  margin-bottom: 5px;
+  transition: 0.3s;
 }
 
-.sidebar-item:hover {
-  background-color: rgba(66, 153, 225, 0.1);
-  color: white;
-}
-
-.sidebar-item.active {
+.sidebar-item:hover, .sidebar-item.active {
   background-color: #4299e1;
   color: white;
 }
 
-.sidebar-footer {
-  padding: 20px;
-  border-top: 1px solid #2d3748;
-}
-
-/* 4. Main Content Area */
+/* Main Content */
 .main-content {
   margin-left: 260px;
   padding: 40px;
   width: calc(100% - 260px);
 }
 
-.header {
-  margin-bottom: 30px;
-}
+.header { margin-bottom: 30px; }
+.header h1 { font-size: 32px; font-weight: 700; }
+.subtitle { color: #a0aec0; margin-top: 5px; }
 
-.header h1 {
-  font-size: 32px;
-  font-weight: 700;
-  color: #ffffff;
-}
-
-.subtitle {
-  color: #a0aec0;
-  font-size: 15px;
-}
-
-.content-container {
-  max-width: 1100px;
-}
-
-/* 5. Summary Cards */
+/* Summary Cards */
 .summary-section {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -117,27 +73,15 @@ body {
   padding: 25px;
   border-radius: 15px;
   border: 1px solid #2d3748;
-  text-align: center;
 }
 
-.card h3 {
-  font-size: 13px;
-  text-transform: uppercase;
-  color: #a0aec0;
-  letter-spacing: 1px;
-  margin-bottom: 10px;
-}
-
-.card p {
-  font-size: 32px;
-  font-weight: 800;
-}
-
+.card h3 { font-size: 14px; color: #a0aec0; text-transform: uppercase; letter-spacing: 1px; }
+.card p { font-size: 32px; font-weight: 700; margin-top: 10px; }
 .card-present { border-left: 5px solid #48bb78; }
 .card-absent { border-left: 5px solid #f56565; }
-.card-leave { border-left: 5px solid #4299e1; }
+.card-leave { border-left: 5px solid #3182ce; }
 
-/* 6. Report Container & Controls */
+/* Report Card & Controls */
 .report-card {
   background-color: #202940;
   padding: 30px;
@@ -152,101 +96,58 @@ body {
   margin-bottom: 30px;
   padding-bottom: 20px;
   border-bottom: 1px solid #2d3748;
-  flex-wrap: wrap;
-  gap: 20px;
 }
 
-/* Filter Form */
-.filter-form {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.select-group {
-  display: flex;
-  gap: 8px;
-}
+.filter-form { display: flex; gap: 15px; }
+.select-group { display: flex; gap: 10px; }
 
 select {
   background-color: #1a2035;
   border: 1px solid #2d3748;
-  border-radius: 8px;
   color: white;
   padding: 10px 15px;
+  border-radius: 8px;
   outline: none;
-  cursor: pointer;
 }
 
 .btn-filter {
   background-color: #4299e1;
   color: white;
   border: none;
+  padding: 10px 25px;
   border-radius: 8px;
-  padding: 10px 20px;
-  cursor: pointer;
   font-weight: 600;
-  transition: background 0.2s;
+  cursor: pointer;
 }
 
-.btn-filter:hover { background-color: #3182ce; }
-
-/* Export Section */
-.export-section {
-  display: flex;
-  gap: 10px;
-}
-
+.export-section { display: flex; gap: 10px; }
 .btn-export {
   padding: 10px 20px;
   border-radius: 8px;
-  color: white;
-  font-weight: 600;
   border: none;
+  font-weight: 600;
   cursor: pointer;
-  font-size: 13px;
-  transition: opacity 0.2s;
+  color: white;
 }
-
-.btn-export:hover { opacity: 0.9; }
 .btn-export.pdf { background-color: #e53e3e; }
 .btn-export.excel { background-color: #38a169; }
 
-/* 7. Attendance Table */
-.table-container {
-  overflow-x: auto;
-}
-
-.attendance-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
+/* Table */
+.attendance-table { width: 100%; border-collapse: collapse; }
 .attendance-table th {
-  padding: 15px;
   text-align: left;
-  background-color: transparent;
+  padding: 15px;
   color: #a0aec0;
-  font-size: 12px;
   text-transform: uppercase;
-  letter-spacing: 1px;
+  font-size: 12px;
   border-bottom: 2px solid #2d3748;
 }
 
-.attendance-table td {
-  padding: 18px 15px;
-  border-bottom: 1px solid #2d3748;
-  font-size: 14px;
-}
-
-.attendance-table tr:hover {
-  background-color: rgba(255, 255, 255, 0.02);
-}
-
+.attendance-table td { padding: 18px 15px; border-bottom: 1px solid #2d3748; }
 .font-bold { font-weight: 700; }
-.text-muted { color: #a0aec0; }
+.text-muted { color: #a0aec0; font-size: 13px; }
 
-/* 8. Status Badges */
+/* Badges */
 .status-badge {
   padding: 6px 14px;
   border-radius: 20px;
@@ -257,24 +158,8 @@ select {
 
 .present { background: rgba(72, 187, 120, 0.2); color: #48bb78; }
 .absent { background: rgba(245, 101, 101, 0.2); color: #f56565; }
-.on-leave { background: rgba(66, 153, 225, 0.2); color: #4299e1; }
+.on-leave { background: rgba(49, 130, 206, 0.2); color: #4299e1; }
 .weekend, .holiday { background: rgba(236, 201, 75, 0.2); color: #ecc94b; }
 
-/* Row Highlighting */
 .row-holiday { background-color: rgba(236, 201, 75, 0.02); }
 .row-leave { background-color: rgba(66, 153, 225, 0.02); }
-
-/* Responsive */
-@media (max-width: 992px) {
-  .sidebar { display: none; }
-  .main-content {
-    margin-left: 0;
-    width: 100%;
-    padding: 20px;
-  }
-  .summary-section { grid-template-columns: 1fr; }
-  .control-bar { flex-direction: column; align-items: stretch; }
-  .filter-form { flex-direction: column; }
-  .select-group { width: 100%; }
-  select { flex: 1; }
-}
