@@ -152,6 +152,11 @@ class PasswordResetAdmin(admin.ModelAdmin):
 
 @admin.register(LeaveRequest)
 class LeaveRequestAdmin(admin.ModelAdmin):
-    list_display = ("student", "from_date", "to_date", "reason", "status", "submitted_at")
-    list_filter = ("status", "from_date", "to_date")
+    # Added 'category' after student for better visibility
+    list_display = ("student", "category", "from_date", "to_date", "reason", "status", "submitted_at")
+    
+    # Added 'category' to filters to easily find all "Illness" or "Family Matter" requests
+    list_filter = ("status", "category", "from_date", "to_date")
+    
+    # Kept your existing search fields
     search_fields = ("student__name", "reason")

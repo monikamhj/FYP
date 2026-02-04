@@ -176,6 +176,17 @@
               </div>
 
               <div class="form-group">
+                <label for="category">Leave Category</label>
+                <select name="category" id="category" class="form-select" required>
+                    <option value="" disabled selected>Select a category</option>
+                    <option value="illness">Illness</option>
+                    <option value="appointment">Appointment</option>
+                    <option value="family">Family Matter</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+
+              <div class="form-group">
                 <label for="reason">Reason for Leave</label>
                 <textarea id="reason" placeholder="Please provide a detailed reason for your leave application" required></textarea>
               </div>

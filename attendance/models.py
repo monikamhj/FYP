@@ -1,4 +1,5 @@
 from django.db import models
+from django.core.exceptions import ValidationError
 import uuid
 from django.utils import timezone
 
@@ -42,12 +43,41 @@ class LeaveRequest(models.Model):
         ('rejected', 'Rejected'),
     ]
 
+    # Added Leave Categories
+    CATEGORY_CHOICES = [
+        ('illness', 'Illness'),
+        ('appointment', 'Appointment'),
+        ('family', 'Family Matter'),
+        ('other', 'Other'),
+    ]
+
     student = models.ForeignKey(Student, on_delete=models.CASCADE)
+    category = models.CharField(max_length=20, choices=CATEGORY_CHOICES, default='other') # New Field
     from_date = models.DateField()
     to_date = models.DateField()
     reason = models.TextField()
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
     submitted_at = models.DateTimeField(auto_now_add=True)
 
+    def clean(self):
+        """Custom validation to restrict leave requests to 2 per month."""
+        # Check how many requests the student has already made this month
+        current_month = self.from_date.month
+        current_year = self.from_date.year
+        
+        leave_count = LeaveRequest.objects.filter(
+            student=self.student,
+            from_date__month=current_month,
+            from_date__year=current_year
+        ).count()
+
+        # If this is a new request (not an edit) and count is already 2
+        if not self.pk and leave_count >= 2:
+            raise ValidationError(f"You have already submitted {leave_count} leave requests for this month. The limit is 2.")
+
+    def save(self, *args, **kwargs):
+        self.full_clean() # Ensures clean() is called before saving
+        super().save(*args, **kwargs)
+
     def __str__(self):
-        return f"{self.student.name} - {self.from_date} to {self.to_date}"
+        return f"{self.student.name} ({self.category}) - {self.from_date}"

@@ -53,7 +53,6 @@ def student_login_view(request):
 
     return render(request, 'attendance/login.html')
 
-
 def attendance_report_view(request):
     if 'student_id' not in request.session:
         return redirect('login_view')
