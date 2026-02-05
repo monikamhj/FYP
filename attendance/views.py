@@ -455,18 +455,23 @@ def submit_leave(request):
         from_date = data.get('from_date')
         to_date = data.get('to_date') or from_date
         reason = data.get('reason')
+        category = data.get('category', 'other')  # Get category from data, default to 'other'
 
         print("📅 From:", from_date)
         print("📅 To:", to_date)
         print("📝 Reason:", reason)
+        print("🏷️ Category:", category)  # Add this debug print
 
+        # FIXED: Include the category field when creating the LeaveRequest
         leave = LeaveRequest.objects.create(
             student=student,
             from_date=from_date,
             to_date=to_date,
-            reason=reason
+            reason=reason,
+            category=category  # Add this line
         )
         print("✅ LeaveRequest created:", leave)
+        print("✅ Saved category:", leave.category)  # Verify what was saved
 
         return JsonResponse({'message': 'Leave application submitted! ✅'})
 
