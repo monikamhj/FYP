@@ -1,15 +1,30 @@
+# attendance/admin.py
 from datetime import date
 
-from django.contrib import admin
-from django.shortcuts import render, get_object_or_404
+from django.contrib import admin, messages
+from django.shortcuts import render, get_object_or_404, redirect
 from django.urls import path
 from django.utils.html import format_html
+from django.http import HttpResponseRedirect
 
 from django.db.models import Min, Max
 from import_export import resources
 from import_export.admin import ExportMixin
 
 from .models import Student, Attendance, PasswordReset, LeaveRequest
+
+
+# -----------------------
+# CUSTOM ADMIN ACTIONS
+# -----------------------
+
+def delete_daily_attendance_action(modeladmin, request, queryset):
+    """Admin action to delete selected attendance records"""
+    count = queryset.count()
+    queryset.delete()
+    messages.success(request, f"Successfully deleted {count} attendance records.")
+
+delete_daily_attendance_action.short_description = "Delete selected attendance records"
 
 
 # -----------------------
@@ -52,7 +67,7 @@ class StudentAdmin(ExportMixin, admin.ModelAdmin):
 
 
 # -----------------------
-# ATTENDANCE ADMIN (daily summary + breaks)
+# ATTENDANCE ADMIN (daily summary + breaks + bulk delete)
 # -----------------------
 
 @admin.register(Attendance)
@@ -64,6 +79,7 @@ class AttendanceAdmin(ExportMixin, admin.ModelAdmin):
     search_fields = ("student__name", "student__student_id")
     list_filter = ("date", "student")
     ordering = ("-date", "student__name")
+    actions = [delete_daily_attendance_action]
 
     change_list_template = "attendance/admin/attendance_summary_changelist.html"
 
@@ -80,11 +96,29 @@ class AttendanceAdmin(ExportMixin, admin.ModelAdmin):
         )
 
     def changelist_view(self, request, extra_context=None):
+        # Check if it's a delete request from the summary page
+        if 'delete_all' in request.GET and request.GET.get('delete_all') == '1':
+            student_id = request.GET.get('student__student_id__exact')
+            date_str = request.GET.get('date__exact')
+            
+            if student_id and date_str:
+                # Delete all attendance for that student on that date
+                records = Attendance.objects.filter(
+                    student__student_id=student_id,
+                    date=date_str
+                )
+                count = records.count()
+                records.delete()
+                messages.success(request, f"Successfully deleted {count} attendance records for {date_str}")
+                
+                # Redirect to remove the query parameters
+                return redirect('admin:attendance_attendance_changelist')
+        
+        # Add daily summary to context
         extra_context = extra_context or {}
         extra_context["daily_summary"] = self.get_daily_summary()
         return super().changelist_view(request, extra_context=extra_context)
 
-    # ---------- breaks page for a single day ----------
     def get_urls(self):
         urls = super().get_urls()
         custom = [
@@ -93,8 +127,33 @@ class AttendanceAdmin(ExportMixin, admin.ModelAdmin):
                 self.admin_site.admin_view(self.daily_breaks_view),
                 name="attendance_daily_breaks",
             ),
+            path(
+                "bulk-delete/",
+                self.admin_site.admin_view(self.bulk_delete_view),
+                name="attendance_bulk_delete",
+            ),
         ]
         return custom + urls
+
+    def bulk_delete_view(self, request):
+        """Handle direct delete from summary page"""
+        student_id = request.GET.get('student_id')
+        date_str = request.GET.get('date')
+        
+        if student_id and date_str:
+            try:
+                records = Attendance.objects.filter(
+                    student__student_id=student_id,
+                    date=date_str
+                )
+                count = records.count()
+                records.delete()
+                messages.success(request, f'Deleted {count} attendance records for {date_str}')
+            except Exception as e:
+                messages.error(request, f'Error deleting records: {str(e)}')
+        
+        # Redirect back to the summary page
+        return redirect('admin:attendance_attendance_changelist')
 
     def daily_breaks_view(self, request, student_id, day):
         student = get_object_or_404(Student, student_id=student_id)
@@ -133,6 +192,31 @@ class AttendanceAdmin(ExportMixin, admin.ModelAdmin):
             "attendance/admin/daily_attendance_details.html",  # reuse your existing template
             context,
         )
+
+# -----------------------
+# Edit
+# -----------------------
+    
+    def get_form(self, request, obj=None, **kwargs):
+        """Pre-fill form with student and date from URL parameters"""
+        form = super().get_form(request, obj, **kwargs)
+        
+        # If it's an add form (obj is None), check for URL parameters
+        if obj is None and request.method == 'GET':
+            student_id = request.GET.get('student')
+            date_str = request.GET.get('initial-date')
+            
+            if student_id:
+                try:
+                    student = Student.objects.get(student_id=student_id)
+                    form.base_fields['student'].initial = student
+                except Student.DoesNotExist:
+                    pass
+            
+            if date_str:
+                form.base_fields['date'].initial = date_str
+        
+        return form
 
 
 # -----------------------

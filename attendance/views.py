@@ -27,6 +27,8 @@ from django.views.decorators.csrf import csrf_exempt
 from .models import LeaveRequest
 from django.views.decorators.http import require_POST
 import json
+from django.db.models import Min, Max
+
 # In-memory capture state
 capture_progress = defaultdict(lambda: {"count": 0, "done": False})
 
@@ -73,10 +75,21 @@ def attendance_report_view(request):
     all_dates = [date(year, month, day) for day in range(1, limit_date.day + 1)]
 
     # 1. Fetch Attendance
-    attendance_records = Attendance.objects.filter(
-        student=student, date__year=year, date__month=month
-    ).values('date', 'check_in', 'check_out')
-    attendance_map = {rec['date']: rec for rec in attendance_records}
+    # 1. Fetch and aggregate Attendance
+    attendance_agg = Attendance.objects.filter(
+    student=student, date__year=year, date__month=month
+).values('date').annotate(
+    first_check_in=Min('check_in'),
+    last_check_out=Max('check_out')
+)
+
+
+    attendance_map = {
+    rec['date']: {
+        'check_in': rec['first_check_in'],
+        'check_out': rec['last_check_out']
+    } for rec in attendance_agg
+}
 
     # 2. Fetch Approved Leave Requests
     leaves = LeaveRequest.objects.filter(
@@ -123,12 +136,28 @@ def attendance_report_view(request):
         else:
             status = 'Absent'
 
+        # Calculate times with Nepal timezone conversion (+5:45)
+        check_in_str = "—"
+        check_out_str = "—"
+
+        if record and record['check_in']:
+            # Convert UTC to Nepal Time (UTC+5:45)
+            utc_time = record['check_in']
+            nepal_time = utc_time + timedelta(hours=5, minutes=45)
+            check_in_str = nepal_time.strftime("%H:%M:%S")
+
+        if record and record['check_out']:
+            # Convert UTC to Nepal Time (UTC+5:45)
+            utc_time = record['check_out']
+            nepal_time = utc_time + timedelta(hours=5, minutes=45)
+            check_out_str = nepal_time.strftime("%H:%M:%S")
+
         attendance_status.append({
             'date': d.strftime("%Y-%m-%d"),
             'day': d.strftime("%A"),
             'status': status,
-            'check_in': record['check_in'].strftime("%H:%M:%S") if (record and record['check_in']) else "—",
-            'check_out': record['check_out'].strftime("%H:%M:%S") if (record and record['check_out']) else "—",
+            'check_in': check_in_str,
+            'check_out': check_out_str,
         })
 
     # Export Logic
