@@ -92,12 +92,18 @@
           </a>
         </td>
         <td>
-          <a href="{% url 'admin:attendance_attendance_changelist' %}?student__id__exact={{ row.student_id }}&date__year={{ row.date.year }}&date__month={{ row.date.month }}&date__day={{ row.date.day }}">
+          <!-- Edit button with pre-filled student and date -->
+          <a href="{% url 'admin:attendance_attendance_add' %}?_changelist_filters=student__student_id__exact%3D{{ row.student__student_id }}%26date__exact%3D{{ row.date|date:'Y-m-d' }}&student={{ row.student__student_id }}&date={{ row.date|date:'Y-m-d' }}"
+             style="color: #1a73e8; margin-right: 10px; font-weight: 500;"
+             title="Add/edit attendance for {{ row.student__name }} on {{ row.date }}">
             ✏️ Edit
           </a>
           
-          <a href="{% url 'admin:attendance_attendance_changelist' %}?student__id__exact={{ row.student_id }}&date__year={{ row.date.year }}&date__month={{ row.date.month }}&date__day={{ row.date.day }}" 
-             class="delete-link">
+          <!-- Delete button: Direct deletion with confirmation -->
+          <a href="{% url 'admin:attendance_bulk_delete' %}?student_id={{ row.student__student_id }}&date={{ row.date|date:'Y-m-d' }}"
+             class="delete-link"
+             onclick="return confirm('Are you sure you want to delete ALL attendance records for {{ row.student__name }} on {{ row.date }}? This action cannot be undone.');"
+             title="Delete all sessions for this day">
             🗑️ Delete
           </a>
         </td>
