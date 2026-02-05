@@ -19,7 +19,7 @@ class Student(models.Model):
 
 class Attendance(models.Model):
     student = models.ForeignKey(Student, on_delete=models.CASCADE)   # FIXED
-    date = models.DateField(auto_now_add=True)
+    date = models.DateField()
     check_in = models.DateTimeField(null=True, blank=True)
     check_out = models.DateTimeField(null=True, blank=True)
 
