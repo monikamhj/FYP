@@ -1,0 +1,33 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block content %}
+<div id="content-main">
+  <div class="module">
+    <h2>Confirm Deletion</h2>
+    
+    <div style="padding: 15px; background: #ffecb3; border: 1px solid #ffb300; margin-bottom: 20px;">
+      <p><strong>Delete ALL attendance for:</strong></p>
+      <p><strong>{{ student_name }}</strong> on <strong>{{ date }}</strong></p>
+      <p>This action cannot be undone.</p>
+    </div>
+
+    <form method="post" action="/admin/attendance/attendance/bulk-delete-confirm/">
+      {% csrf_token %}
+      <input type="hidden" name="student_id" value="{{ student_id }}">
+      <input type="hidden" name="date" value="{{ date }}">
+      <input type="hidden" name="student_name" value="{{ student_name }}">
+      
+      <div style="margin: 20px 0;">
+        <label style="font-weight: bold;">Remarks/Reason:</label>
+        <textarea name="remarks" rows="3" style="width: 100%; margin-top: 5px;" required></textarea>
+      </div>
+
+      <div>
+        <input type="submit" value="Yes, Delete" style="background: #ba2121; color: white; padding: 10px 15px; border: none; cursor: pointer;">
+        <a href="/admin/attendance/attendance/" style="background: #ddd; padding: 10px 15px; text-decoration: none; margin-left: 10px;">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
