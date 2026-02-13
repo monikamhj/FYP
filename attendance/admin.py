@@ -114,7 +114,14 @@ class AttendanceAdmin(ExportMixin, admin.ModelAdmin):
                 # Redirect to remove the query parameters
                 return redirect('admin:attendance_attendance_changelist')
         
-        # Add daily summary to context
+        # Check if this is a filtered view (has student or date filters)
+        if request.GET.get('student__student_id__exact') or request.GET.get('date__exact') or request.GET.get('student__id__exact'):
+            # This is a filtered view - use the default template
+            self.change_list_template = None  # Use default Django template
+            return super().changelist_view(request, extra_context)
+        
+        # Otherwise, show the daily summary with custom template
+        self.change_list_template = "attendance/admin/attendance_summary_changelist.html"
         extra_context = extra_context or {}
         extra_context["daily_summary"] = self.get_daily_summary()
         return super().changelist_view(request, extra_context=extra_context)
@@ -175,12 +182,12 @@ class AttendanceAdmin(ExportMixin, admin.ModelAdmin):
                     AttendanceDeletionLog.objects.create(
                         student=student,
                         student_name=student_name,
-                        student_code=student_id,  # Changed from student_id to student_code
+                        student_code=student_id,
                         date=date_str,
                         remarks=remarks,
                         deleted_by=request.user,
                         records_count=count
-                        )
+                    )
                     
                     # Now delete the records
                     records.delete()
@@ -255,7 +262,7 @@ class AttendanceAdmin(ExportMixin, admin.ModelAdmin):
 
 
 # -----------------------
-# ATTENDANCE DELETION LOG ADMIN (OPTION 3)
+# ATTENDANCE DELETION LOG ADMIN
 # -----------------------
 
 @admin.register(AttendanceDeletionLog)
@@ -263,7 +270,7 @@ class AttendanceDeletionLogAdmin(admin.ModelAdmin):
     list_display = ('student_name', 'student_code', 'date', 'deleted_by', 'deleted_at', 'records_count')
     list_filter = ('deleted_at', 'date', 'deleted_by')
     search_fields = ('student_name', 'student_code', 'remarks')
-    readonly_fields = ('student_name', 'student_id', 'date', 'remarks', 'deleted_by', 'deleted_at', 'records_count')
+    readonly_fields = ('student_name', 'student_code', 'date', 'remarks', 'deleted_by', 'deleted_at', 'records_count')
     date_hierarchy = 'deleted_at'
     
     def has_add_permission(self, request):
@@ -293,11 +300,6 @@ class PasswordResetAdmin(admin.ModelAdmin):
 
 @admin.register(LeaveRequest)
 class LeaveRequestAdmin(admin.ModelAdmin):
-    # Added 'category' after student for better visibility
     list_display = ("student", "category", "from_date", "to_date", "reason", "status", "submitted_at")
-    
-    # Added 'category' to filters to easily find all "Illness" or "Family Matter" requests
     list_filter = ("status", "category", "from_date", "to_date")
-    
-    # Kept your existing search fields
     search_fields = ("student__name", "reason")

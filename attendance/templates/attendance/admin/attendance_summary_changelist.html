@@ -92,12 +92,12 @@
           </a>
         </td>
         <td>
-          <!-- Edit button with pre-filled student and date -->
-          <a href="{% url 'admin:attendance_attendance_add' %}?_changelist_filters=student__student_id__exact%3D{{ row.student__student_id }}%26date__exact%3D{{ row.date|date:'Y-m-d' }}&student={{ row.student__student_id }}&date={{ row.date|date:'Y-m-d' }}"
-             style="color: #1a73e8; margin-right: 10px; font-weight: 500;"
-             title="Add/edit attendance for {{ row.student__name }} on {{ row.date }}">
-            ✏️ Edit
-          </a>
+          <!-- View Sessions button - shows all sessions for that day -->
+<a href="{% url 'admin:attendance_attendance_changelist' %}?student__student_id__exact={{ row.student__student_id }}&date__exact={{ row.date|date:'Y-m-d' }}"
+style="color: #1a73e8; margin-right: 10px; font-weight: 500;"
+title="View all attendance sessions for {{ row.student__name }} on {{ row.date }}">
+ Sessions
+</a>
           
           <!-- Delete button - now goes to confirmation page -->
            <a href="/admin/attendance/attendance/bulk-delete-confirm-page/?student_id={{ row.student__student_id }}&date={{ row.date|date:'Y-m-d' }}&student_name={{ row.student__name }}"
