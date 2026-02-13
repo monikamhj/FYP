@@ -2,6 +2,7 @@ from django.db import models
 from django.core.exceptions import ValidationError
 import uuid
 from django.utils import timezone
+from django.contrib.auth.models import User
 
 class Student(models.Model):
     student_id = models.AutoField(primary_key=True)
@@ -81,3 +82,34 @@ class LeaveRequest(models.Model):
 
     def __str__(self):
         return f"{self.student.name} ({self.category}) - {self.from_date}"
+
+# AttendanceDeletionLog class - MOVED OUTSIDE LeaveRequest (FIXED INDENTATION)
+class AttendanceDeletionLog(models.Model):
+    """Log for tracking attendance deletions with remarks"""
+    student = models.ForeignKey(Student, on_delete=models.SET_NULL, null=True)
+    student_name = models.CharField(max_length=100, blank=True)
+    student_code = models.CharField(max_length=50, blank=True)  # Changed from student_id to student_code
+    date = models.DateField()
+    remarks = models.TextField()
+    deleted_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL, 
+        null=True
+    )
+    deleted_at = models.DateTimeField(auto_now_add=True)
+    records_count = models.IntegerField(default=0)
+    
+    def save(self, *args, **kwargs):
+        # Auto-fill student name and ID if student exists
+        if self.student and not self.student_name:
+            self.student_name = self.student.name
+            self.student_code = self.student.student_id  # Changed here too
+        super().save(*args, **kwargs)
+    
+    def __str__(self):
+        return f"Deletion: {self.student_name} on {self.date}"
+    
+    class Meta:
+        ordering = ['-deleted_at']
+        verbose_name = "Attendance Deletion Log"
+        verbose_name_plural = "Attendance Deletion Logs"

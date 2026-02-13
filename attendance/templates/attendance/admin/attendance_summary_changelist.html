@@ -99,12 +99,11 @@
             ✏️ Edit
           </a>
           
-          <!-- Delete button: Direct deletion with confirmation -->
-          <a href="{% url 'admin:attendance_bulk_delete' %}?student_id={{ row.student__student_id }}&date={{ row.date|date:'Y-m-d' }}"
-             class="delete-link"
-             onclick="return confirm('Are you sure you want to delete ALL attendance records for {{ row.student__name }} on {{ row.date }}? This action cannot be undone.');"
-             title="Delete all sessions for this day">
-            🗑️ Delete
+          <!-- Delete button - now goes to confirmation page -->
+           <a href="/admin/attendance/attendance/bulk-delete-confirm-page/?student_id={{ row.student__student_id }}&date={{ row.date|date:'Y-m-d' }}&student_name={{ row.student__name }}"
+           class="delete-link"
+           title="Delete all sessions for this day">
+           🗑️ Delete
           </a>
         </td>
       </tr>

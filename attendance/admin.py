@@ -11,7 +11,7 @@ from django.db.models import Min, Max
 from import_export import resources
 from import_export.admin import ExportMixin
 
-from .models import Student, Attendance, PasswordReset, LeaveRequest
+from .models import Student, Attendance, PasswordReset, LeaveRequest, AttendanceDeletionLog
 
 
 # -----------------------
@@ -123,36 +123,75 @@ class AttendanceAdmin(ExportMixin, admin.ModelAdmin):
         urls = super().get_urls()
         custom = [
             path(
+                "bulk-delete-confirm-page/",
+                self.admin_site.admin_view(self.bulk_delete_confirm_page),
+                name="attendance_bulk_delete_confirm_page",
+            ),
+            path(
+                "bulk-delete-confirm/",
+                self.admin_site.admin_view(self.bulk_delete_confirm),
+                name="attendance_bulk_delete_confirm",
+            ),
+            path(
                 "breaks/<int:student_id>/<slug:day>/",
                 self.admin_site.admin_view(self.daily_breaks_view),
                 name="attendance_daily_breaks",
             ),
-            path(
-                "bulk-delete/",
-                self.admin_site.admin_view(self.bulk_delete_view),
-                name="attendance_bulk_delete",
-            ),
         ]
         return custom + urls
 
-    def bulk_delete_view(self, request):
-        """Handle direct delete from summary page"""
+    def bulk_delete_confirm_page(self, request):
+        """Show confirmation page with remarks field"""
         student_id = request.GET.get('student_id')
         date_str = request.GET.get('date')
+        student_name = request.GET.get('student_name', 'Unknown')
         
-        if student_id and date_str:
-            try:
-                records = Attendance.objects.filter(
-                    student__student_id=student_id,
-                    date=date_str
-                )
-                count = records.count()
-                records.delete()
-                messages.success(request, f'Deleted {count} attendance records for {date_str}')
-            except Exception as e:
-                messages.error(request, f'Error deleting records: {str(e)}')
-        
-        # Redirect back to the summary page
+        context = {
+            'student_id': student_id,
+            'student_name': student_name,
+            'date': date_str,
+        }
+        return render(request, 'attendance/admin/attendance_delete_confirmation.html', context)
+
+    def bulk_delete_confirm(self, request):
+        """Handle delete with remarks and save to log"""
+        if request.method == 'POST':
+            student_id = request.POST.get('student_id')
+            date_str = request.POST.get('date')
+            student_name = request.POST.get('student_name')
+            remarks = request.POST.get('remarks')
+            
+            if student_id and date_str and remarks:
+                # Get student and records before deletion
+                try:
+                    student = Student.objects.get(student_id=student_id)
+                    records = Attendance.objects.filter(
+                        student__student_id=student_id,
+                        date=date_str
+                    )
+                    count = records.count()
+                    
+                    # Save to deletion log BEFORE deleting
+                    AttendanceDeletionLog.objects.create(
+                        student=student,
+                        student_name=student_name,
+                        student_code=student_id,  # Changed from student_id to student_code
+                        date=date_str,
+                        remarks=remarks,
+                        deleted_by=request.user,
+                        records_count=count
+                        )
+                    
+                    # Now delete the records
+                    records.delete()
+                    
+                    # Show success message with remarks
+                    messages.success(request, f'Deleted {count} records for {student_name} on {date_str}. Remarks: {remarks}')
+                except Student.DoesNotExist:
+                    messages.error(request, 'Student not found')
+            else:
+                messages.error(request, 'Remarks are required')
+                
         return redirect('admin:attendance_attendance_changelist')
 
     def daily_breaks_view(self, request, student_id, day):
@@ -189,14 +228,10 @@ class AttendanceAdmin(ExportMixin, admin.ModelAdmin):
         )
         return render(
             request,
-            "attendance/admin/daily_attendance_details.html",  # reuse your existing template
+            "attendance/admin/daily_attendance_details.html",
             context,
         )
 
-# -----------------------
-# Edit
-# -----------------------
-    
     def get_form(self, request, obj=None, **kwargs):
         """Pre-fill form with student and date from URL parameters"""
         form = super().get_form(request, obj, **kwargs)
@@ -217,6 +252,28 @@ class AttendanceAdmin(ExportMixin, admin.ModelAdmin):
                 form.base_fields['date'].initial = date_str
         
         return form
+
+
+# -----------------------
+# ATTENDANCE DELETION LOG ADMIN (OPTION 3)
+# -----------------------
+
+@admin.register(AttendanceDeletionLog)
+class AttendanceDeletionLogAdmin(admin.ModelAdmin):
+    list_display = ('student_name', 'student_code', 'date', 'deleted_by', 'deleted_at', 'records_count')
+    list_filter = ('deleted_at', 'date', 'deleted_by')
+    search_fields = ('student_name', 'student_code', 'remarks')
+    readonly_fields = ('student_name', 'student_id', 'date', 'remarks', 'deleted_by', 'deleted_at', 'records_count')
+    date_hierarchy = 'deleted_at'
+    
+    def has_add_permission(self, request):
+        return False  # Don't allow manual adding
+    
+    def has_change_permission(self, request, obj=None):
+        return False  # Don't allow editing
+    
+    def has_delete_permission(self, request, obj=None):
+        return False  # Don't allow deletion of logs
 
 
 # -----------------------
