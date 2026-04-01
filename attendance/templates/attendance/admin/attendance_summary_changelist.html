@@ -1,128 +1,173 @@
 {% extends "admin/change_list.html" %}
-{% load i18n %}
+{% load i18n admin_urls static %}
+
+{% block extrahead %}
+{{ block.super }}
+<style>
+    /* 1. Hide the default right-side filter sidebar */
+    #changelist-filter { display: none !important; }
+    #changelist.filtered { grid-template-columns: 1fr !important; }
+
+    /* 2. Style the custom horizontal filter to match Admin bar */
+    .custom-filter-bar {
+        background: #fff;
+        border-bottom: 1px solid #ccc;
+        padding: 10px 15px;
+        margin-bottom: 15px;
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        flex-wrap: wrap;
+    }
+    .custom-filter-bar label {
+        font-weight: bold;
+        color: #666;
+        font-size: 13px;
+        margin-right: 5px;
+    }
+    .custom-filter-bar input, .custom-filter-bar select {
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        padding: 4px 8px;
+        font-size: 13px;
+    }
+    .btn-go {
+        background: #79aec8;
+        padding: 4px 15px;
+        border: none;
+        border-radius: 4px;
+        color: white;
+        cursor: pointer;
+        font-weight: bold;
+        font-size: 13px;
+    }
+    .btn-go:hover { background: #609ab6; }
+    
+    .btn-clear {
+        color: #999;
+        font-size: 12px;
+        text-decoration: none;
+        margin-left: 10px;
+    }
+    
+    .btn-clear:hover {
+        color: #666;
+    }
+
+    /* 3. Ensure the result table looks exactly like the default */
+    #changelist .results {
+        border-top: none;
+    }
+    .results table thead th.column-title {
+        color: #447e9b; /* Django Blue Header */
+    }
+    
+    /* 4. Actions column styling */
+    .action-checkbox-column {
+        width: 16px;
+        padding: 0 !important;
+        text-align: center;
+    }
+    
+    .nowrap {
+        white-space: nowrap;
+    }
+</style>
+{% endblock %}
+
+{% block filters %}
+    <!-- Custom Horizontal Filter Bar -->
+    <div class="custom-filter-bar">
+        <form method="get" id="changelist-form-custom" style="display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
+            <div>
+                <label>From:</label>
+                <input type="date" name="from_date" value="{{ current_from }}">
+            </div>
+            <div>
+                <label>To:</label>
+                <input type="date" name="to_date" value="{{ current_to }}">
+            </div>
+            <div>
+                <label>Student:</label>
+                <select name="student">
+                    <option value="">---------</option>
+                    {% for s in all_students %}
+                        <option value="{{ s.student_id }}" {% if current_student == s.student_id %}selected{% endif %}>
+                            {{ s.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <input type="submit" value="Search" class="btn-go">
+            <a href="." class="btn-clear">Clear</a>
+        </form>
+    </div>
+{% endblock %}
 
 {% block result_list %}
+    <div class="results">
+        <table id="result_list">
+            <thead>
+                <tr>
+                    <th scope="col" class="action-checkbox-column">
+                        <div class="text"><span><input type="checkbox" id="action-toggle"></span></div>
+                        <div class="clear"></div>
+                    </th>
+                    <th scope="col" class="column-title">
+                        <div class="text"><span>STUDENT</span></div>
+                        <div class="clear"></div>
+                    </th>
+                    <th scope="col" class="column-title">
+                        <div class="text"><span>DATE</span></div>
+                        <div class="clear"></div>
+                    </th>
+                    <th scope="col" class="column-title">
+                        <div class="text"><span>FIRST CHECK-IN</span></div>
+                        <div class="clear"></div>
+                    </th>
+                    <th scope="col" class="column-title">
+                        <div class="text"><span>LAST CHECK-OUT</span></div>
+                        <div class="clear"></div>
+                    </th>
+                    <th scope="col" class="column-title">
+                        <div class="text"><span>ACTIONS</span></div>
+                        <div class="clear"></div>
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+              {% for row in daily_summary %}
+              <tr class="{% cycle 'row1' 'row2' %}">
+                  <td class="action-checkbox"><input type="checkbox" class="action-select"></td>
+                  <th class="field-student">
+                      <a href="{% url 'admin:attendance_student_change' row.student__student_id|default:0 %}">
+                          {{ row.student__name }} ({{ row.student__student_id }})
+                      </a>
+                  </th>
+                  <td class="nowrap">{{ row.date|date:"M. d, Y" }}</td>
+                  <td class="nowrap" style="color: #26a69a; font-weight: bold;">{{ row.first_in|time:"H:i" }}</td>
+                  <td class="nowrap" style="color: #1e88e5; font-weight: bold;">{{ row.last_out|time:"H:i" }}</td>
+                  <td class="nowrap">
+                      <a href="{% url 'admin:attendance_daily_breaks' row.student__student_id row.date|date:'Y-m-d' %}">View Breaks</a> |
+                      <a href="{% url 'admin:attendance_bulk_delete_confirm_page' %}?student_id={{ row.student__student_id }}&date={{ row.date|date:'Y-m-d' }}&student_name={{ row.student__name }}" style="color: #ba2121;">Delete</a> | 
+                      <!-- View Sessions button - shows all sessions for that day -->
+                      <a href="{% url 'admin:attendance_attendance_changelist' %}?student__student_id__exact={{ row.student__student_id }}&date__exact={{ row.date|date:'Y-m-d' }}" style="color: #1a73e8;">Sessions</a>
+                  </td>
+              </tr>
+              {% empty %}
+              <tr>
+                  <td colspan="6" style="text-align: center; padding: 20px; color: #999;">
+                      No attendance records available.
+                  </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% endblock %}
 
-<style>
-  /* Title styling */
-  .attendance-title {
-    margin: 20px 0 10px;
-    font-size: 22px;
-    font-weight: 600;
-  }
-
-  /* Table styling */
-  table.adminlist {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 15px;
-    margin-top: 15px;
-  }
-
-  table.adminlist thead th {
-    background-color: #f5f5f5;
-    padding: 12px;
-    text-align: left;
-    border-bottom: 2px solid #ddd;
-    white-space: nowrap;
-  }
-
-  table.adminlist tbody td {
-    padding: 10px 12px;
-    border-bottom: 1px solid #e0e0e0;
-    vertical-align: middle;
-  }
-
-  table.adminlist tbody tr:hover {
-    background-color: #f9f9f9;
-  }
-
-  table.adminlist a {
-    color: #1a73e8;
-    font-weight: 500;
-    text-decoration: none;
-    margin-right: 8px;
-  }
-
-  table.adminlist a:hover {
-    text-decoration: underline;
-  }
-
-  .delete-link {
-    color: #d93025 !important;
-  }
-
-  .delete-link:hover {
-    text-decoration: underline !important;
-  }
-
-  .no-records {
-    text-align: center;
-    font-style: italic;
-    color: #666;
-  }
-</style>
-
-<h2 class="attendance-title">
-  {% trans "Daily Attendance" %}
-</h2>
-
-<table class="adminlist">
-  <thead>
-    <tr>
-      <th>{% trans "Student" %}</th>
-      <th>{% trans "Date" %}</th>
-      <th>{% trans "First Check-in" %}</th>
-      <th>{% trans "Last Check-out" %}</th>
-      <th>{% trans "Breaks" %}</th>
-      <th>{% trans "Actions" %}</th>
-    </tr>
-  </thead>
-
-  <tbody>
-    {% for row in daily_summary %}
-      <tr>
-        <td>{{ row.student__name }}</td>
-        <td>{{ row.date }}</td>
-        <td>{{ row.first_in }}</td>
-        <td>{{ row.last_out }}</td>
-        <td>
-          <a href="{% url 'admin:attendance_daily_breaks' student_id=row.student__student_id day=row.date %}">
-            {% trans "View Breaks" %}
-          </a>
-        </td>
-        <td>
-          <!-- View Sessions button - shows all sessions for that day -->
-<a href="{% url 'admin:attendance_attendance_changelist' %}?student__student_id__exact={{ row.student__student_id }}&date__exact={{ row.date|date:'Y-m-d' }}"
-style="color: #1a73e8; margin-right: 10px; font-weight: 500;"
-title="View all attendance sessions for {{ row.student__name }} on {{ row.date }}">
- Sessions
-</a>
-          
-          <!-- Delete button - now goes to confirmation page -->
-           <a href="/admin/attendance/attendance/bulk-delete-confirm-page/?student_id={{ row.student__student_id }}&date={{ row.date|date:'Y-m-d' }}&student_name={{ row.student__name }}"
-           class="delete-link"
-           title="Delete all sessions for this day">
-           🗑️ Delete
-          </a>
-        </td>
-      </tr>
-    {% empty %}
-      <tr>
-        <td colspan="6" class="no-records">
-          {% trans "No attendance records available." %}
-        </td>
-      </tr>
-    {% endfor %}
-  </tbody>
-</table>
-
-<script>
-  function deleteDayAttendance(studentId, date) {
-    if (confirm(`Delete ALL attendance sessions for this student on ${date}? This cannot be undone.`)) {
-      window.location.href = `{% url 'admin:attendance_attendance_changelist' %}?student__student_id__exact=${studentId}&date__exact=${date}&delete_all=1`;
-    }
-  }
-</script>
-
+{% block pagination %}
+    <p class="paginator">
+        {{ daily_summary|length }} summary results
+    </p>
 {% endblock %}

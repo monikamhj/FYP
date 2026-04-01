@@ -74,24 +74,20 @@
 <body>
     <div class="card">
 
-        {% if action == "checkin" %}
-            <h2 class="status-checkin">✔ Check-In Successful!</h2>
-            <p>Welcome, <strong>{{ student.name }}</strong></p>
-            <div class="time-box">
-                Checked in at: <strong>{{ check_in_time }}</strong>
-            </div>
-
-        {% elif action == "checkout" %}
+        {% if status and "Check-Out" in status %}
             <h2 class="status-checkout">⏳ Check-Out Successful!</h2>
             <p>Goodbye, <strong>{{ student.name }}</strong></p>
-            <div class="time-box">
-                Checked out at: <strong>{{ check_out_time }}</strong>
-            </div>
-
+        {% elif status and "Check-In" in status %}
+            <h2 class="status-checkin">✔ Check-In Successful!</h2>
+            <p>Welcome, <strong>{{ student.name }}</strong></p>
         {% else %}
             <h2>Attendance Recorded</h2>
             <p><strong>{{ student.name }}</strong></p>
         {% endif %}
+
+        <div class="time-box">
+            Recorded at: <strong>{{ time|date:"H:i:s" }}</strong>
+        </div>
 
         <p>ID: {{ student.student_id }}</p>
 

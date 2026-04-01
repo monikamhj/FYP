@@ -1,0 +1,11 @@
+{% load i18n %}
+<div class="filter-item">
+  <!-- This is the hidden filter that Django's ChangeList uses -->
+  <input
+    type="date"
+    name="{{ spec.parameter_name }}"
+    value="{{ spec.value|default:'' }}"
+    style="width:100%; padding:5px; border:1px solid #ccc; border-radius:4px; margin-top:4px; font-size:13px;"
+    onchange="this.form.submit()"
+  >
+</div>

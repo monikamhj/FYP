@@ -1,0 +1,311 @@
+{% extends "admin/index.html" %}
+{% load i18n static %}
+
+{% block extrastyle %}
+{{ block.super }}
+<style>
+/* Fix overall layout */
+#container {
+    width: 100% !important;
+}
+#recent-actions-module {
+    display: none !important;
+}
+
+#content {
+    width: auto !important;
+    margin: 0 !important;
+    padding: 20px !important;
+}
+
+#content-main {
+    width: 100% !important;
+    float: none !important;
+    overflow: visible !important;
+}
+
+/* Chart Box - Larger and Positioned on Right */
+.attendance-chart-large {
+    background: white;
+    border: 1px solid #e3e3e3;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    width: 380px;
+    float: right;
+    margin-left: 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.attendance-chart-large h3 {
+    margin: 0 0 15px 0;
+    font-size: 16px;
+    font-weight: bold;
+    color: #333;
+    border-left: 4px solid #79aec8;
+    padding-left: 12px;
+}
+
+/* Stats Section */
+.chart-stats-large {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.stat-card {
+    flex: 1;
+    text-align: center;
+    background: linear-gradient(135deg, #f8f9fa 0%, #f1f3f5 100%);
+    padding: 12px;
+    border-radius: 8px;
+    transition: transform 0.2s;
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+}
+
+.stat-card .stat-value {
+    font-size: 28px;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.stat-card .stat-label {
+    font-size: 11px;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.stat-card.total .stat-value { color: #2196F3; }
+.stat-card.present .stat-value { color: #4CAF50; }
+.stat-card.absent .stat-value { color: #f44336; }
+
+/* Chart Container */
+.chart-container-large {
+    width: 280px;
+    height: 280px;
+    margin: 0 auto 15px auto;
+}
+
+.chart-percentages-large {
+    text-align: center;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid #e0e0e0;
+    font-size: 13px;
+}
+
+.chart-percentages-large span {
+    margin: 0 10px;
+    font-weight: bold;
+}
+
+.chart-percentages-large .present-text { color: #4CAF50; }
+.chart-percentages-large .absent-text { color: #f44336; }
+
+/* Make App List and Recent Actions Side by Side */
+.dashboard .module {
+    float: left !important;
+    width: calc(50% - 10px) !important;
+    margin-right: 20px !important;
+    clear: none !important;
+}
+
+.dashboard .module:last-child {
+    margin-right: 0 !important;
+}
+
+.dashboard .module table {
+    width: 100% !important;
+}
+
+.dashboard .module caption {
+    background: #f8f8f8 !important;
+    font-weight: bold !important;
+    padding: 10px !important;
+}
+
+/* Recent Actions Styling */
+#recent-actions-list {
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+#recent-actions-list li {
+    display: block !important;
+    padding: 10px 12px !important;
+    border-bottom: 1px solid #eee !important;
+    margin: 0 !important;
+}
+
+#recent-actions-list li:last-child {
+    border-bottom: none !important;
+}
+
+#recent-actions-list .action-time {
+    font-size: 11px !important;
+    color: #999 !important;
+    float: right !important;
+}
+
+#recent-actions-list .action-user {
+    font-weight: bold !important;
+    color: #447e9b !important;
+}
+
+/* Clear floats */
+.clearfix {
+    clear: both !important;
+    height: 0 !important;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+    .attendance-chart-large {
+        width: 100%;
+        float: none;
+        margin-left: 0;
+        margin-bottom: 20px;
+    }
+    
+    .dashboard .module {
+        width: 100% !important;
+        margin-right: 0 !important;
+        float: none !important;
+        margin-bottom: 20px !important;
+    }
+}
+
+@media (max-width: 768px) {
+    .chart-stats-large {
+        flex-wrap: wrap;
+    }
+    
+    .stat-card {
+        min-width: calc(33% - 10px);
+    }
+    
+    .chart-container-large {
+        width: 240px;
+        height: 240px;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="content-main">
+    <!-- Larger Chart Box - Positioned on Right -->
+    <div class="attendance-chart-large">
+        <h3>📊 Today's Attendance Overview</h3>
+        
+        <div class="chart-stats-large">
+            <div class="stat-card total">
+                <div class="stat-value">{{ total_students|default:"0" }}</div>
+                <div class="stat-label">Total Students</div>
+            </div>
+            <div class="stat-card present">
+                <div class="stat-value">{{ today_present|default:"0" }}</div>
+                <div class="stat-label">Present Today</div>
+            </div>
+            <div class="stat-card absent">
+                <div class="stat-value">{{ today_absent|default:"0" }}</div>
+                <div class="stat-label">Absent Today</div>
+            </div>
+        </div>
+        
+        <div class="chart-container-large">
+            <canvas id="attendanceChartLarge"></canvas>
+        </div>
+        
+        <div class="chart-percentages-large">
+            {% if total_students > 0 %}
+                <span class="present-text">✓ Present: {% widthratio today_present|default:0 total_students 100 %}%</span>
+                <span class="absent-text">✗ Absent: {% widthratio today_absent|default:0 total_students 100 %}%</span>
+            {% else %}
+                <span>No students registered in the system</span>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Original Admin Content -->
+    {{ block.super }}
+    
+    <div class="clearfix"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+(function() {
+    function initChart() {
+        var canvas = document.getElementById('attendanceChartLarge');
+        if (!canvas) return;
+        
+        var present = parseInt('{{ today_present|default:"0" }}') || 0;
+        var absent = parseInt('{{ today_absent|default:"0" }}') || 0;
+        
+        if (present === 0 && absent === 0) {
+            var ctx = canvas.getContext('2d');
+            ctx.font = '14px Arial';
+            ctx.fillStyle = '#999';
+            ctx.textAlign = 'center';
+            ctx.fillText('No attendance data', canvas.width/2, canvas.height/2);
+            return;
+        }
+        
+        var ctx = canvas.getContext('2d');
+        
+        new Chart(ctx, {
+            type: 'pie',
+            data: {
+                labels: ['Present (' + present + ' students)', 'Absent (' + absent + ' students)'],
+                datasets: [{
+                    data: [present, absent],
+                    backgroundColor: ['#4CAF50', '#f44336'],
+                    borderColor: ['#45a049', '#da190b'],
+                    borderWidth: 2,
+                    hoverOffset: 8
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            font: {
+                                size: 11
+                            },
+                            padding: 10
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                var total = present + absent;
+                                var percent = total > 0 ? ((context.raw / total) * 100).toFixed(1) : 0;
+                                return context.label.split('(')[0] + ': ' + context.raw + ' students (' + percent + '%)';
+                            }
+                        }
+                    }
+                },
+                animation: {
+                    animateScale: true,
+                    animateRotate: true
+                }
+            }
+        });
+    }
+    
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initChart);
+    } else {
+        initChart();
+    }
+})();
+</script>
+{% endblock %}

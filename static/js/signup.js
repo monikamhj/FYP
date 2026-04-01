@@ -34,29 +34,34 @@ document.addEventListener('DOMContentLoaded', function () {
   const toastMessage = document.getElementById('toast-message');
 
   // Toggle password visibility
-  togglePasswordBtn.addEventListener('click', function () {
-      if (passwordInput.type === 'password') {
-          passwordInput.type = 'text';
-          togglePasswordBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="eye-icon"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><line x1="2" x2="22" y1="12" y2="12"/></svg>';
-      } else {
-          passwordInput.type = 'password';
-          togglePasswordBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="eye-icon"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>';
-      }
-  });
+  if (togglePasswordBtn) {
+      togglePasswordBtn.addEventListener('click', function () {
+          if (passwordInput.type === 'password') {
+              passwordInput.type = 'text';
+              togglePasswordBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="eye-icon"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><line x1="2" x2="22" y1="12" y2="12"/></svg>';
+          } else {
+              passwordInput.type = 'password';
+              togglePasswordBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="eye-icon"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>';
+          }
+      });
+  }
 
   // Toggle confirm password visibility
-  toggleConfirmPasswordBtn.addEventListener('click', function () {
-      if (confirmPasswordInput.type === 'password') {
-          confirmPasswordInput.type = 'text';
-          toggleConfirmPasswordBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="eye-icon"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><line x1="2" x2="22" y1="12" y2="12"/></svg>';
-      } else {
-          confirmPasswordInput.type = 'password';
-          toggleConfirmPasswordBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="eye-icon"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>';
-      }
-  });
+  if (toggleConfirmPasswordBtn) {
+      toggleConfirmPasswordBtn.addEventListener('click', function () {
+          if (confirmPasswordInput.type === 'password') {
+              confirmPasswordInput.type = 'text';
+              toggleConfirmPasswordBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="eye-icon"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><line x1="2" x2="22" y1="12" y2="12"/></svg>';
+          } else {
+              confirmPasswordInput.type = 'password';
+              toggleConfirmPasswordBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="eye-icon"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>';
+          }
+      });
+  }
 
   // Check if passwords match
   function checkPasswordMatch() {
+      if (!passwordMatchIndicator) return;
       if (confirmPasswordInput.value === '') {
           passwordMatchIndicator.textContent = '';
           passwordMatchIndicator.classList.remove('match', 'no-match');
@@ -83,7 +88,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
       const formData = new FormData(this);
 
-      fetch("{% url 'register_view' %}", {
+      fetch("/register/", {
           method: "POST",
           body: formData,
           headers: {
@@ -95,7 +100,7 @@ document.addEventListener('DOMContentLoaded', function () {
               if (data.success) {
                   showToast(data.success, 'success');
                   setTimeout(() => {
-                      window.location.href = "{% url 'login_view' %}";
+                      window.location.href = data.redirect || "/login/";
                   }, 2000);
               } else if (data.error) {
                   showToast(data.error, 'error');
