@@ -1,0 +1,109 @@
+{% extends "admin/change_list.html" %}
+{% load i18n admin_urls static %}
+
+{% block filters %}
+    <style>
+        /* Hide the default Django right sidebar filter */
+        #changelist-filter {
+            display: none !important;
+        }
+        
+        /* Layout for the custom horizontal filter bar */
+        .custom-filter-header {
+            background: #ffffff;
+            border: 1px solid #e1e1e1;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+
+        .filter-form {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            align-items: flex-end;
+        }
+
+        .filter-field {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .filter-field label {
+            font-size: 12px;
+            font-weight: 700;
+            color: #555;
+            text-transform: uppercase;
+        }
+
+        .filter-field input, .filter-field select {
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            min-width: 200px;
+            font-size: 14px;
+            background-color: #fff;
+        }
+
+        .filter-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-apply {
+            background-color: #417690;
+            color: white !important;
+            padding: 10px 25px;
+            border-radius: 4px;
+            border: none;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .btn-apply:hover { background-color: #264b5d; }
+
+        .btn-clear {
+            background-color: #f4f4f4;
+            color: #333 !important;
+            padding: 10px 20px;
+            border-radius: 4px;
+            text-decoration: none;
+            border: 1px solid #ccc;
+            font-size: 13px;
+        }
+    </style>
+
+    <div class="custom-filter-header">
+        <form method="get" class="filter-form">
+            <div class="filter-field">
+                <label>From Date</label>
+                <input type="date" name="from_date" value="{{ current_from }}">
+            </div>
+
+            <div class="filter-field">
+                <label>To Date</label>
+                <input type="date" name="to_date" value="{{ current_to }}">
+            </div>
+
+            <div class="filter-field">
+                <label>Student</label>
+                <select name="student">
+                    <option value="">All Students</option>
+                    {% for s in all_students %}
+                        <option value="{{ s.student_id }}" {% if current_student == s.student_id %}selected{% endif %}>
+                            {{ s.name }} ({{ s.student_id }})
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="filter-buttons">
+                <button type="submit" class="btn-apply">Search</button>
+                <a href="." class="btn-clear">Clear Filters</a>
+            </div>
+        </form>
+    </div>
+{% endblock %}

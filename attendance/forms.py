@@ -1,37 +1,40 @@
 from django import forms
-from .models import Student
-from .models import LeaveRequest
 import re
 
+from .models import LeaveRequest, Student
+
+
 class StudentForm(forms.ModelForm):
+    """
+    Student registration form.
+
+    Note: this file previously defined StudentForm twice, and the second definition
+    overwrote the first (silently dropping validations). This single definition
+    keeps all validations and adds confirm_password support.
+    """
+
+    password = forms.CharField(widget=forms.PasswordInput(), min_length=8)
+    confirm_password = forms.CharField(widget=forms.PasswordInput(), min_length=8)
+
     class Meta:
         model = Student
-        exclude = ['student_id']
+        exclude = ["student_id"]
+        widgets = {
+            "password": forms.PasswordInput(),
+        }
 
     def clean_email(self):
-        email = self.cleaned_data.get('email')
+        email = self.cleaned_data.get("email")
         if Student.objects.filter(email=email).exists():
             raise forms.ValidationError("This email is already in use.")
         return email
 
     def clean_phone_number(self):
-        phone_number = self.cleaned_data.get('phone_number')
-        # Ensure phone number is valid (basic check for digits and length)
-        if not re.match(r'^\+?\d{10,15}$', phone_number):
+        phone_number = self.cleaned_data.get("phone_number")
+        # Basic check for digits and length (+ optional leading '+').
+        if not re.match(r"^\+?\d{10,15}$", phone_number):
             raise forms.ValidationError("Enter a valid phone number.")
         return phone_number
-
-    password = forms.CharField(widget=forms.PasswordInput(), min_length=8)
-
-class StudentForm(forms.ModelForm):
-    confirm_password = forms.CharField(widget=forms.PasswordInput(), min_length=8)
-
-    class Meta:
-        model = Student
-        exclude = ['student_id']
-        widgets = {
-            'password': forms.PasswordInput(),
-        }
 
     def clean(self):
         cleaned_data = super().clean()
@@ -39,7 +42,9 @@ class StudentForm(forms.ModelForm):
         confirm_password = cleaned_data.get("confirm_password")
 
         if password and confirm_password and password != confirm_password:
-            self.add_error('confirm_password', "Passwords do not match.")
+            self.add_error("confirm_password", "Passwords do not match.")
+
+        return cleaned_data
 
 class LeaveRequestForm(forms.ModelForm):
     class Meta:

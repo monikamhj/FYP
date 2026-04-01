@@ -1,36 +1,28 @@
 # attendance/admin.py
-from datetime import date
-
+from datetime import date, datetime
 from django.contrib import admin, messages
 from django.shortcuts import render, get_object_or_404, redirect
 from django.urls import path
-from django.utils.html import format_html
-from django.http import HttpResponseRedirect
-
 from django.db.models import Min, Max
+from django.utils import timezone  # Required for dashboard logic
 from import_export import resources
 from import_export.admin import ExportMixin
 
 from .models import Student, Attendance, PasswordReset, LeaveRequest, AttendanceDeletionLog
 
-
 # -----------------------
 # CUSTOM ADMIN ACTIONS
 # -----------------------
-
 def delete_daily_attendance_action(modeladmin, request, queryset):
-    """Admin action to delete selected attendance records"""
     count = queryset.count()
     queryset.delete()
     messages.success(request, f"Successfully deleted {count} attendance records.")
 
 delete_daily_attendance_action.short_description = "Delete selected attendance records"
 
-
 # -----------------------
 # IMPORT-EXPORT RESOURCES
 # -----------------------
-
 class StudentResource(resources.ModelResource):
     class Meta:
         model = Student
@@ -39,54 +31,88 @@ class AttendanceResource(resources.ModelResource):
     class Meta:
         model = Attendance
 
+# -----------------------
+# CUSTOM FILTERS
+# -----------------------
+class FromDateFilter(admin.SimpleListFilter):
+    title = 'From Date'
+    parameter_name = 'from_date'
+    template = 'attendance/admin/date_filter.html'
+
+    def lookups(self, request, model_admin):
+        return [('custom', 'Select date')]
+
+    def queryset(self, request, queryset):
+        if self.value():
+            return queryset.filter(date__gte=self.value())
+        return queryset
+
+class ToDateFilter(admin.SimpleListFilter):
+    title = 'To Date'
+    parameter_name = 'to_date'
+    template = 'attendance/admin/date_filter.html'
+
+    def lookups(self, request, model_admin):
+        return [('custom', 'Select date')]
+
+    def queryset(self, request, queryset):
+        if self.value():
+            return queryset.filter(date__lte=self.value())
+        return queryset
+
+class StudentFilter(admin.SimpleListFilter):
+    title = 'Students'
+    parameter_name = 'student'
+
+    def lookups(self, request, model_admin):
+        students = Student.objects.filter(attendance__isnull=False).distinct().order_by('name')
+        return [(s.student_id, f"{s.name} ({s.student_id})") for s in students]
+
+    def queryset(self, request, queryset):
+        if self.value():
+            return queryset.filter(student__student_id=self.value())
+        return queryset
 
 # -----------------------
-# INLINE ATTENDANCE FOR STUDENT
+# ATTENDANCE ADMIN
 # -----------------------
-
-class AttendanceInline(admin.TabularInline):
-    model = Attendance
-    extra = 0
-    readonly_fields = ("date", "check_in", "check_out")
-    can_delete = False
-
-
-# -----------------------
-# STUDENT ADMIN
-# -----------------------
-
-@admin.register(Student)
-class StudentAdmin(ExportMixin, admin.ModelAdmin):
-    resource_class = StudentResource
-    list_display = ("student_id", "name", "email", "course", "dob")
-    list_display_links = ("student_id", "name")
-    search_fields = ("name", "student_id", "email")
-    list_filter = ("course",)
-    ordering = ("student_id",)
-    inlines = [AttendanceInline]
-
-
-# -----------------------
-# ATTENDANCE ADMIN (daily summary + breaks + bulk delete)
-# -----------------------
-
 @admin.register(Attendance)
 class AttendanceAdmin(ExportMixin, admin.ModelAdmin):
     resource_class = AttendanceResource
-
-    # We will render our own summary table, so keep list_display simple
     list_display = ("student", "date", "check_in", "check_out")
-    search_fields = ("student__name", "student__student_id")
-    list_filter = ("date", "student")
+    list_filter = [FromDateFilter, ToDateFilter, StudentFilter]
     ordering = ("-date", "student__name")
     actions = [delete_daily_attendance_action]
-
+    
+    # Default template for the Summary View
     change_list_template = "attendance/admin/attendance_summary_changelist.html"
 
-    def get_daily_summary(self):
-        """Returns one row per (student, date) with first_in and last_out."""
-        return (
-            Attendance.objects
+    def changelist_view(self, request, extra_context=None):
+        # 1. Get the filtered queryset using Django's built-in ChangeList
+        cl = self.get_changelist_instance(request)
+        filtered_query = cl.get_queryset(request)
+
+        # 2. Check if this is a detailed view (specific student & date filters)
+        is_detailed_view = ('student__student_id__exact' in request.GET or 'date__exact' in request.GET)
+        
+        # 3. If it's a detailed view, use the default template to show individual records
+        if is_detailed_view:
+            self.change_list_template = None  # Use default Django template
+            extra_context = extra_context or {}
+            extra_context.update({
+                "current_from": request.GET.get('from_date', ''),
+                "current_to": request.GET.get('to_date', ''),
+                "current_student": request.GET.get('student', ''),
+                "all_students": Student.objects.filter(attendance__isnull=False).distinct().order_by('name'),
+            })
+            return super().changelist_view(request, extra_context=extra_context)
+        
+        # 4. Otherwise, show the summary view (default behavior)
+        self.change_list_template = "attendance/admin/attendance_summary_changelist.html"
+        
+        # 5. Aggregated Summary (First In / Last Out)
+        daily_summary = (
+            filtered_query
             .values("student__student_id", "student__name", "date")
             .annotate(
                 first_in=Min("check_in"),
@@ -95,110 +121,51 @@ class AttendanceAdmin(ExportMixin, admin.ModelAdmin):
             .order_by("-date", "student__name")
         )
 
-    def changelist_view(self, request, extra_context=None):
-        # Check if it's a delete request from the summary page
-        if 'delete_all' in request.GET and request.GET.get('delete_all') == '1':
-            student_id = request.GET.get('student__student_id__exact')
-            date_str = request.GET.get('date__exact')
-            
-            if student_id and date_str:
-                # Delete all attendance for that student on that date
-                records = Attendance.objects.filter(
-                    student__student_id=student_id,
-                    date=date_str
-                )
-                count = records.count()
-                records.delete()
-                messages.success(request, f"Successfully deleted {count} attendance records for {date_str}")
-                
-                # Redirect to remove the query parameters
-                return redirect('admin:attendance_attendance_changelist')
-        
-        # Check if this is a filtered view (has student or date filters)
-        if request.GET.get('student__student_id__exact') or request.GET.get('date__exact') or request.GET.get('student__id__exact'):
-            # This is a filtered view - use the default template
-            self.change_list_template = None  # Use default Django template
-            return super().changelist_view(request, extra_context)
-        
-        # Otherwise, show the daily summary with custom template
-        self.change_list_template = "attendance/admin/attendance_summary_changelist.html"
+        # 6. Prepare Context for the template
         extra_context = extra_context or {}
-        extra_context["daily_summary"] = self.get_daily_summary()
+        extra_context.update({
+            "daily_summary": daily_summary,
+            "current_from": request.GET.get('from_date', ''),
+            "current_to": request.GET.get('to_date', ''),
+            "current_student": request.GET.get('student', ''),
+            "all_students": Student.objects.filter(attendance__isnull=False).distinct().order_by('name'),
+            "title": "Attendance Summary"
+        })
+
         return super().changelist_view(request, extra_context=extra_context)
 
     def get_urls(self):
         urls = super().get_urls()
-        custom = [
-            path(
-                "bulk-delete-confirm-page/",
-                self.admin_site.admin_view(self.bulk_delete_confirm_page),
-                name="attendance_bulk_delete_confirm_page",
-            ),
-            path(
-                "bulk-delete-confirm/",
-                self.admin_site.admin_view(self.bulk_delete_confirm),
-                name="attendance_bulk_delete_confirm",
-            ),
-            path(
-                "breaks/<int:student_id>/<slug:day>/",
-                self.admin_site.admin_view(self.daily_breaks_view),
-                name="attendance_daily_breaks",
-            ),
+        custom_urls = [
+            path("bulk-delete-confirm-page/", self.admin_site.admin_view(self.bulk_delete_confirm_page), name="attendance_bulk_delete_confirm_page"),
+            path("bulk-delete-confirm/", self.admin_site.admin_view(self.bulk_delete_confirm), name="attendance_bulk_delete_confirm"),
+            path("breaks/<int:student_id>/<slug:day>/", self.admin_site.admin_view(self.daily_breaks_view), name="attendance_daily_breaks"),
         ]
-        return custom + urls
+        return custom_urls + urls
 
     def bulk_delete_confirm_page(self, request):
-        """Show confirmation page with remarks field"""
-        student_id = request.GET.get('student_id')
-        date_str = request.GET.get('date')
-        student_name = request.GET.get('student_name', 'Unknown')
-        
         context = {
-            'student_id': student_id,
-            'student_name': student_name,
-            'date': date_str,
+            'student_id': request.GET.get('student_id'),
+            'student_name': request.GET.get('student_name', 'Unknown'),
+            'date': request.GET.get('date'),
         }
         return render(request, 'attendance/admin/attendance_delete_confirmation.html', context)
 
     def bulk_delete_confirm(self, request):
-        """Handle delete with remarks and save to log"""
         if request.method == 'POST':
-            student_id = request.POST.get('student_id')
-            date_str = request.POST.get('date')
-            student_name = request.POST.get('student_name')
-            remarks = request.POST.get('remarks')
-            
-            if student_id and date_str and remarks:
-                # Get student and records before deletion
-                try:
-                    student = Student.objects.get(student_id=student_id)
-                    records = Attendance.objects.filter(
-                        student__student_id=student_id,
-                        date=date_str
-                    )
-                    count = records.count()
-                    
-                    # Save to deletion log BEFORE deleting
-                    AttendanceDeletionLog.objects.create(
-                        student=student,
-                        student_name=student_name,
-                        student_code=student_id,
-                        date=date_str,
-                        remarks=remarks,
-                        deleted_by=request.user,
-                        records_count=count
-                    )
-                    
-                    # Now delete the records
-                    records.delete()
-                    
-                    # Show success message with remarks
-                    messages.success(request, f'Deleted {count} records for {student_name} on {date_str}. Remarks: {remarks}')
-                except Student.DoesNotExist:
-                    messages.error(request, 'Student not found')
-            else:
-                messages.error(request, 'Remarks are required')
-                
+            sid = request.POST.get('student_id')
+            dt = request.POST.get('date')
+            rem = request.POST.get('remarks')
+            if sid and dt and rem:
+                student = Student.objects.get(student_id=sid)
+                recs = Attendance.objects.filter(student__student_id=sid, date=dt)
+                count = recs.count()
+                AttendanceDeletionLog.objects.create(
+                    student=student, student_name=student.name, student_code=sid,
+                    date=dt, remarks=rem, deleted_by=request.user, records_count=count
+                )
+                recs.delete()
+                messages.success(request, f'Deleted {count} records for {dt}.')
         return redirect('admin:attendance_attendance_changelist')
 
     def daily_breaks_view(self, request, student_id, day):
@@ -260,46 +227,52 @@ class AttendanceAdmin(ExportMixin, admin.ModelAdmin):
         
         return form
 
-
 # -----------------------
-# ATTENDANCE DELETION LOG ADMIN
+# OTHER ADMIN REGISTRATIONS
 # -----------------------
+@admin.register(Student)
+class StudentAdmin(ExportMixin, admin.ModelAdmin):
+    resource_class = StudentResource
+    list_display = ("student_id", "name", "email", "course")
+    search_fields = ("name", "student_id")
 
 @admin.register(AttendanceDeletionLog)
 class AttendanceDeletionLogAdmin(admin.ModelAdmin):
-    list_display = ('student_name', 'student_code', 'date', 'deleted_by', 'deleted_at', 'records_count')
-    list_filter = ('deleted_at', 'date', 'deleted_by')
-    search_fields = ('student_name', 'student_code', 'remarks')
+    list_display = ('student_name', 'student_code', 'date', 'deleted_by', 'deleted_at')
     readonly_fields = ('student_name', 'student_code', 'date', 'remarks', 'deleted_by', 'deleted_at', 'records_count')
-    date_hierarchy = 'deleted_at'
-    
-    def has_add_permission(self, request):
-        return False  # Don't allow manual adding
-    
-    def has_change_permission(self, request, obj=None):
-        return False  # Don't allow editing
-    
-    def has_delete_permission(self, request, obj=None):
-        return False  # Don't allow deletion of logs
-
-
-# -----------------------
-# PASSWORD RESET ADMIN
-# -----------------------
 
 @admin.register(PasswordReset)
 class PasswordResetAdmin(admin.ModelAdmin):
     list_display = ["user", "reset_id", "created_when"]
-    search_fields = ("user__email",)
-    list_filter = ("created_when",)
-
-
-# -----------------------
-# LEAVE REQUEST ADMIN
-# -----------------------
 
 @admin.register(LeaveRequest)
 class LeaveRequestAdmin(admin.ModelAdmin):
-    list_display = ("student", "category", "from_date", "to_date", "reason", "status", "submitted_at")
-    list_filter = ("status", "category", "from_date", "to_date")
-    search_fields = ("student__name", "reason")
+    list_display = ("student", "category", "from_date", "to_date", "status")
+
+
+
+# Save the original admin index function
+admin_index_original = admin.site.index
+
+def custom_admin_index(request, extra_context=None):
+    # Calculate stats for the current day
+    today = timezone.now().date()
+    
+    total_students = Student.objects.count()
+    # Count unique students who checked in today
+    today_present = Attendance.objects.filter(date=today).values('student').distinct().count()
+    today_absent = max(0, total_students - today_present)
+
+    # Add variables to the context (Names match your HTML template exactly)
+    extra_context = extra_context or {}
+    extra_context.update({
+        'total_students': total_students,
+        'today_present': today_present,
+        'today_absent': today_absent,
+    })
+
+    # Return the original index but with our new calculated numbers
+    return admin_index_original(request, extra_context)
+
+# Inject our custom function into the admin site
+admin.site.index = custom_admin_index

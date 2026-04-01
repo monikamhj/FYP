@@ -281,8 +281,16 @@ def register_view(request):
             student = form.save(commit=False)
             student.password = make_password(form.cleaned_data['password'])
             student.save()
+            # Frontend signup uses fetch() and expects JSON.
+            # When the JS sends the CSRF token as a header, treat as AJAX.
+            if request.headers.get('X-CSRFToken'):
+                return JsonResponse({
+                    'success': 'Registration successful!',
+                    'redirect': reverse('register_face', kwargs={'student_id': student.student_id})
+                })
             return redirect('register_face', student_id=student.student_id)
-        return JsonResponse({'error': form.errors}, status=400)
+        # Fetch() expects a JSON error payload.
+        return JsonResponse({'error': str(form.errors)}, status=400)
     return render(request, 'attendance/signup.html', {'form': StudentForm()})
 
 # ⬛⬛⬛ MJPEG STREAM VIEW ⬛⬛⬛
@@ -323,7 +331,7 @@ def start_capture_api(request, student_id):
     student_folder = os.path.join("faces", str(student_id))
     os.makedirs(student_folder, exist_ok=True)
 
-    capture_progress[student_id] = {"count": 0, "done": False}
+    capture_progress[student_id] = {"count": 0, "done": False, "cancelled": False}
     captured_embeddings = []
 
     def capture_thread():
@@ -333,7 +341,7 @@ def start_capture_api(request, student_id):
             return
 
         count = 0
-        while count < 10:
+        while count < 10 and not capture_progress[student_id].get("cancelled", False):
             success, frame = cap.read()
             if not success:
                 continue
@@ -343,6 +351,9 @@ def start_capture_api(request, student_id):
                 faces = detector.detect_faces(rgb_frame)
 
                 for face in faces:
+                    if capture_progress[student_id].get("cancelled", False):
+                        break
+
                     x, y, w, h = face['box']
                     if w < 80 or h < 80:
                         continue
@@ -369,7 +380,7 @@ def start_capture_api(request, student_id):
 
         cap.release()
 
-        if captured_embeddings:
+        if captured_embeddings and not capture_progress[student_id].get("cancelled", False):
             mean_embedding = np.mean(captured_embeddings, axis=0)
             np.save(os.path.join(student_folder, f"{student_id}_embedding.npy"), mean_embedding)
             print("✅ Embedding saved.")
@@ -428,7 +439,8 @@ def face_success(request, student_id):
 
 
 def cancel_capture(request, student_id):
-    capture_progress[student_id] = {"count": 0, "done": True}
+    # Signal the background thread to stop and avoid saving embeddings/images.
+    capture_progress[student_id] = {"count": 0, "done": True, "cancelled": True}
     return JsonResponse({'status': 'cancelled'})
 
 @csrf_exempt
