@@ -5,29 +5,26 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AttendDash - Student Portal</title>
-  <meta name="description" content="Student attendance tracking portal" />
+  <title>AttendDash - Leave History</title>
+  <meta name="description" content="Student leave request history" />
   <meta name="author" content="AttendDash" />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;500;600;700&display=swap">
-  <link rel="stylesheet" href="{% static 'css/dashboard.css' %}">
+  <link rel="stylesheet" href="{% static 'css/leave.css' %}">
+  <link rel="stylesheet" href="{% static 'css/leave_history.css' %}">
 </head>
 
 <body>
   <div class="main-container">
     <div class="sidebar">
-      <div class="sidebar-header">
-        <!-- Removed the h1 from here -->
-      </div>
+      <div class="sidebar-header"></div>
 
-      <!-- Centered Attendify Track text in the middle of sidebar -->
       <div class="logo-container">
         <h1 class="sidebar-title">Attendify</h1>
       </div>
 
       <div class="sidebar-menu">
-        <a href="/dashboard/" class="sidebar-item active">
+        <a href="/dashboard/" class="sidebar-item">
           <div class="sidebar-icon">
-            <!-- Home icon -->
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
               stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
@@ -36,9 +33,9 @@
           </div>
           <span class="sidebar-label">Home</span>
         </a>
+
         <a href="/report/" class="sidebar-item">
           <div class="sidebar-icon">
-            <!-- Attendance icon -->
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
               stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
@@ -50,9 +47,9 @@
           </div>
           <span class="sidebar-label">Attendance</span>
         </a>
+
         <a href="/course/" class="sidebar-item">
           <div class="sidebar-icon">
-            <!-- Courses icon -->
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
               stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
@@ -61,9 +58,9 @@
           </div>
           <span class="sidebar-label">Courses</span>
         </a>
+
         <a href="/leave/" class="sidebar-item">
           <div class="sidebar-icon">
-            <!-- Leave icon -->
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
               stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
@@ -76,9 +73,8 @@
           <span class="sidebar-label">Apply for Leave</span>
         </a>
 
-        <a href="/leave/history/" class="sidebar-item">
+        <a href="/leave/history/" class="sidebar-item active">
           <div class="sidebar-icon">
-            <!-- History icon -->
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
               stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M3 3v5h5"></path>
@@ -88,14 +84,11 @@
           </div>
           <span class="sidebar-label">Leave History</span>
         </a>
-
-
-      </div>  <!-- This closes the sidebar-menu div -->
+      </div>
 
       <div class="sidebar-footer">
         <a href="/logout" class="sidebar-item">
           <div class="sidebar-icon">
-            <!-- Logout icon -->
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
               stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
@@ -106,69 +99,76 @@
           <span class="sidebar-label">Logout</span>
         </a>
       </div>
-    </div>  <!-- This closes the sidebar div -->
+    </div>
 
-    <!-- Main content -->
-    <div class="content">
+    <div class="main-content">
       <div class="header">
-        <h1>Dashboard</h1>
-        <p>Welcome back, {{ student_name }}! Here's your attendance overview</p>
+        <h1>Leave History</h1>
+        <p>All your leave requests (latest first)</p>
       </div>
 
-      <!-- Stats grid -->
-      <div class="stats-grid">
-        <div class="stat-card">
-          <h3>Attendance Rate</h3>
-          <div class="stat-card-value">
-            <span class="value">92%</span>
+      <div class="content-container">
+        <div class="card">
+          <div class="card-header">
+            <h2>{{ student_name }}</h2>
+            <p>Total requests: {{ leave_requests|length }}</p>
           </div>
-          <div class="progress-bar">
-            <div class="progress-value" style="width: 92%"></div>
-          </div>
-        </div>
-
-        <div class="stat-card">
-          <h3>Classes Attended</h3>
-          <div class="stat-card-value">
-            <span class="value">41/45</span>
-          </div>
-          <p class="note">4 classes missed</p>
-        </div>
-
-        <div class="stat-card">
-          <h3>Late Arrivals</h3>
-          <div class="stat-card-value">
-            <span class="value">2</span>
-          </div>
-          <p class="note">This semester</p>
-        </div>
-      </div>
-
-      <!-- Upcoming classes -->
-      <div class="upcoming-classes">
-        <h2>Upcoming Classes</h2>
-        <div class="day-section">
-          <h3>Saturday, Dec 03</h3>
-          <div class="class-item">
-            <div class="class-details">
-              <h4>Complex Systems</h4>
-              <div class="class-time">
-                <svg class="icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
-                  fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <circle cx="12" cy="12" r="10"></circle>
-                  <polyline points="12 6 12 12 16 14"></polyline>
-                </svg>
-                <span>10:00 AM · 1h 30m</span>
+          <div class="card-content">
+            {% if leave_requests %}
+              <div class="table-wrap">
+                <table class="history-table">
+                  <thead>
+                    <tr>
+                      <th>Submitted</th>
+                      <th>Category</th>
+                      <th>From</th>
+                      <th>To</th>
+                      <th>Status</th>
+                      <th>Reason</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for req in leave_requests %}
+                      <tr>
+                        <td class="muted">{{ req.submitted_at|date:"Y-m-d H:i" }}</td>
+                        <td>{{ req.get_category_display }}</td>
+                        <td>{{ req.from_date|date:"Y-m-d" }}</td>
+                        <td>{{ req.to_date|date:"Y-m-d" }}</td>
+                        <td>
+                          <span class="status-badge status-{{ req.status }}">{{ req.get_status_display }}</span>
+                        </td>
+                        <td class="reason-cell">{{ req.reason }}</td>
+                        <td>
+                          {% if req.status == "pending" %}
+                            <div class="actions">
+                              <a class="action-link" href="{% url 'edit_leave_request' req.id %}">Edit</a>
+                              <form method="post" action="{% url 'delete_leave_request' req.id %}" class="inline-form"
+                                onsubmit="return confirm('Delete this leave request?');">
+                                {% csrf_token %}
+                                <button type="submit" class="action-danger">Delete</button>
+                              </form>
+                            </div>
+                          {% else %}
+                            <span class="muted">—</span>
+                          {% endif %}
+                        </td>
+                      </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
               </div>
-            </div>
-            <div class="class-location">Room 205B</div>
+            {% else %}
+              <div class="empty-state">
+                <p>You haven’t submitted any leave requests yet.</p>
+                <a class="submit-btn" href="/leave/">Apply for Leave</a>
+              </div>
+            {% endif %}
           </div>
         </div>
       </div>
     </div>
   </div>
-
-  <script src="script.js"></script>
 </body>
 
 </html>

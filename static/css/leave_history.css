@@ -1,0 +1,113 @@
+/* Leave history table styles */
+
+.table-wrap {
+    overflow-x: auto;
+  }
+  
+  .history-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 820px;
+  }
+  
+  .history-table thead th {
+    text-align: left;
+    font-size: 13px;
+    color: #a0aec0;
+    font-weight: 600;
+    padding: 12px;
+    border-bottom: 1px solid #2d3748;
+  }
+  
+  .history-table tbody td {
+    padding: 12px;
+    border-bottom: 1px solid rgba(45, 55, 72, 0.7);
+    vertical-align: top;
+    color: #e2e8f0;
+    font-size: 14px;
+  }
+  
+  .history-table tbody tr:hover {
+    background: rgba(66, 153, 225, 0.06);
+  }
+  
+  .muted {
+    color: #a0aec0;
+  }
+  
+  .reason-cell {
+    max-width: 420px;
+    white-space: pre-wrap;
+    word-break: break-word;
+    line-height: 1.35;
+  }
+  
+  .actions {
+    display: inline-flex;
+    gap: 10px;
+    align-items: center;
+  }
+  
+  .inline-form {
+    display: inline;
+    margin: 0;
+  }
+  
+  .action-link {
+    color: #63b3ed;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 13px;
+  }
+  
+  .action-link:hover {
+    text-decoration: underline;
+  }
+  
+  .action-danger {
+    background: transparent;
+    border: 1px solid rgba(239, 68, 68, 0.5);
+    color: #f87171;
+    padding: 5px 10px;
+    border-radius: 9999px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  
+  .action-danger:hover {
+    background: rgba(239, 68, 68, 0.12);
+  }
+  
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: 9999px;
+    font-size: 12px;
+    font-weight: 600;
+    border: 1px solid transparent;
+  }
+  
+  .status-badge.status-pending {
+    background: rgba(237, 137, 54, 0.14);
+    border-color: rgba(237, 137, 54, 0.35);
+    color: #f6ad55;
+  }
+  
+  .status-badge.status-approved {
+    background: rgba(16, 185, 129, 0.14);
+    border-color: rgba(16, 185, 129, 0.35);
+    color: #34d399;
+  }
+  
+  .status-badge.status-rejected {
+    background: rgba(239, 68, 68, 0.14);
+    border-color: rgba(239, 68, 68, 0.35);
+    color: #f87171;
+  }
+  
+  .empty-state p {
+    color: #a0aec0;
+    margin-bottom: 14px;
+  }

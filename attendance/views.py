@@ -28,6 +28,7 @@ from .models import LeaveRequest
 from django.views.decorators.http import require_POST
 import json
 from django.db.models import Min, Max
+from .forms import StudentForm, LeaveRequestForm
 
 # In-memory capture state
 capture_progress = defaultdict(lambda: {"count": 0, "done": False})
@@ -259,6 +260,70 @@ def logout_view(request):
 
 def leave_view(request):
     return render(request, 'attendance/leave.html')
+
+def leave_history_view(request):
+    if 'student_id' not in request.session:
+        return redirect('login_view')
+
+    student_id = request.session['student_id']
+    student = get_object_or_404(Student, student_id=student_id)
+
+    leave_requests = (
+        LeaveRequest.objects
+        .filter(student=student)
+        .order_by('-submitted_at')
+    )
+
+    return render(request, 'attendance/leave_history.html', {
+        'student': student,
+        'student_name': request.session.get('student_name', student.name),
+        'leave_requests': leave_requests,
+    })
+
+def edit_leave_request_view(request, leave_id):
+    if 'student_id' not in request.session:
+        return redirect('login_view')
+
+    student_id = request.session['student_id']
+    student = get_object_or_404(Student, student_id=student_id)
+    leave_request = get_object_or_404(LeaveRequest, id=leave_id, student=student)
+
+    if leave_request.status != 'pending':
+        messages.error(request, "You can only edit pending leave requests.")
+        return redirect('leave_history')
+
+    if request.method == 'POST':
+        form = LeaveRequestForm(request.POST, instance=leave_request)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Leave request updated.")
+            return redirect('leave_history')
+    else:
+        form = LeaveRequestForm(instance=leave_request)
+
+    return render(request, 'attendance/edit_leave_request.html', {
+        'student': student,
+        'student_name': request.session.get('student_name', student.name),
+        'form': form,
+        'leave_request': leave_request,
+    })
+
+@require_POST
+def delete_leave_request_view(request, leave_id):
+    if 'student_id' not in request.session:
+        return redirect('login_view')
+
+    student_id = request.session['student_id']
+    student = get_object_or_404(Student, student_id=student_id)
+    leave_request = get_object_or_404(LeaveRequest, id=leave_id, student=student)
+
+    if leave_request.status != 'pending':
+        messages.error(request, "You can only delete pending leave requests.")
+        return redirect('leave_history')
+
+    leave_request.delete()
+    messages.success(request, "Leave request deleted.")
+    return redirect('leave_history')
 
 def dashboard_view(request):
     if 'student_id' not in request.session:
