@@ -4,6 +4,9 @@ from .views import submit_leave
 
 urlpatterns = [
     path('leave/', views.leave_view, name='leave_view'),
+    path('leave/history/', views.leave_history_view, name='leave_history'),
+    path('leave/history/<int:leave_id>/edit/', views.edit_leave_request_view, name='edit_leave_request'),
+    path('leave/history/<int:leave_id>/delete/', views.delete_leave_request_view, name='delete_leave_request'),
     path('dashboard/', views.dashboard_view, name='dashboard'),
     path('login/', views.student_login_view, name='login_view'),
     path('signup/', views.signup_view, name='signup_view'),
