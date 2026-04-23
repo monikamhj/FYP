@@ -10,13 +10,23 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.2/ref/settings/
 """
 import os
-from dotenv import load_dotenv
+from dotenv import load_dotenv, dotenv_values
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 BASE_DIR = Path(__file__).resolve().parent.parent
-load_dotenv(os.path.join(BASE_DIR, '.env'))
+ENV_FILES = [
+    BASE_DIR / ".env",
+    BASE_DIR / "attendance" / ".env",
+]
+for env_file in ENV_FILES:
+    load_dotenv(env_file)
+
+DOTENV_DATA = {}
+for env_file in ENV_FILES:
+    if env_file.exists():
+        DOTENV_DATA.update({k: v for k, v in dotenv_values(env_file).items() if v is not None})
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
@@ -138,8 +148,13 @@ EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 465
 EMAIL_USE_SSL = True
-EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
-EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER') or DOTENV_DATA.get('EMAIL_HOST_USER')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD') or DOTENV_DATA.get('EMAIL_HOST_PASSWORD')
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+PASSWORD_RESET_OTP_EXPIRY_MINUTES = int(
+    os.getenv("PASSWORD_RESET_OTP_EXPIRY_MINUTES")
+    or DOTENV_DATA.get("PASSWORD_RESET_OTP_EXPIRY_MINUTES", 10)
+)
 
 JAZZMIN_SETTINGS = {
     "site_title": "Attendance System Admin",

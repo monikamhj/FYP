@@ -3,6 +3,10 @@ from django.core.exceptions import ValidationError
 import uuid
 from django.utils import timezone
 from django.contrib.auth.models import User
+from django.contrib.auth.hashers import make_password, check_password
+from datetime import timedelta
+from django.conf import settings
+import secrets
 
 class Student(models.Model):
     student_id = models.AutoField(primary_key=True)
@@ -35,6 +39,45 @@ class PasswordReset(models.Model):
 
     def __str__(self):
         return f"Password reset for {self.user.email} at {self.created_when}"
+
+
+class PasswordResetOTP(models.Model):
+    user = models.ForeignKey(Student, on_delete=models.CASCADE, related_name="password_reset_otps")
+    otp_hash = models.CharField(max_length=255)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    is_used = models.BooleanField(default=False)
+    attempts = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"OTP reset for {self.user.email}"
+
+    @classmethod
+    def generate_for_user(cls, user):
+        otp = f"{secrets.randbelow(1000000):06d}"
+        expiry_minutes = getattr(settings, "PASSWORD_RESET_OTP_EXPIRY_MINUTES", 10)
+
+        cls.objects.filter(user=user, is_used=False, expires_at__gt=timezone.now()).update(
+            is_used=True
+        )
+
+        obj = cls.objects.create(
+            user=user,
+            otp_hash=make_password(otp),
+            expires_at=timezone.now() + timedelta(minutes=expiry_minutes),
+        )
+        return obj, otp
+
+    def is_expired(self):
+        return timezone.now() > self.expires_at
+
+    def verify_otp(self, raw_otp):
+        if self.is_used or self.is_expired():
+            return False
+        return check_password(raw_otp, self.otp_hash)
 
 
 class LeaveRequest(models.Model):

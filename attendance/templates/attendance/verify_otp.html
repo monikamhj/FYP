@@ -1,0 +1,50 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verify OTP</title>
+    <link rel="stylesheet" href="{% static 'css/login.css' %}">
+</head>
+<body>
+    <div class="student-page">
+        <div class="student-card">
+            <div class="student-logo">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                </svg>
+            </div>
+
+            <h1 class="student-heading">Verify OTP</h1>
+            <p class="student-subheading">Enter the 6-digit OTP sent to {{ email }}</p>
+
+            {% if messages %}
+              <ul class="login-errors">
+                {% for message in messages %}
+                  <li>{{ message }}</li>
+                {% endfor %}
+              </ul>
+            {% endif %}
+
+            <form method="POST" action="{% url 'verify-password-otp' %}">
+                {% csrf_token %}
+                <div class="student-input-wrapper">
+                    <input type="text" name="otp" maxlength="6" class="student-input" placeholder="6-digit OTP" required>
+                </div>
+                <button type="submit" class="student-button">Verify OTP</button>
+            </form>
+
+            <form method="POST" action="{% url 'resend-password-otp' %}" style="margin-top: 10px;">
+                {% csrf_token %}
+                <button type="submit" class="student-button" style="background:#6b7280;">Resend OTP</button>
+            </form>
+
+            <p class="register-link" style="margin-top: 1rem;">
+                Back to <a href="{% url 'login_view' %}">Login</a>
+            </p>
+        </div>
+    </div>
+</body>
+</html>

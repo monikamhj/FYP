@@ -1,5 +1,6 @@
 from django import forms
 import re
+from django.contrib.auth.password_validation import validate_password
 
 from .models import LeaveRequest, Student
 
@@ -56,3 +57,35 @@ class LeaveRequestForm(forms.ModelForm):
             'to_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-input'}),
             'reason': forms.Textarea(attrs={'class': 'form-textarea', 'placeholder': 'Reason...'}),
         }
+
+
+class PasswordResetRequestForm(forms.Form):
+    email = forms.EmailField()
+
+
+class OTPVerificationForm(forms.Form):
+    otp = forms.CharField(min_length=6, max_length=6)
+
+    def clean_otp(self):
+        otp = self.cleaned_data["otp"].strip()
+        if not otp.isdigit():
+            raise forms.ValidationError("OTP must be 6 digits.")
+        return otp
+
+
+class PasswordResetWithOTPForm(forms.Form):
+    password = forms.CharField(widget=forms.PasswordInput(), min_length=8)
+    confirm_password = forms.CharField(widget=forms.PasswordInput(), min_length=8)
+
+    def clean_password(self):
+        password = self.cleaned_data["password"]
+        validate_password(password)
+        return password
+
+    def clean(self):
+        cleaned_data = super().clean()
+        password = cleaned_data.get("password")
+        confirm_password = cleaned_data.get("confirm_password")
+        if password and confirm_password and password != confirm_password:
+            self.add_error("confirm_password", "Passwords do not match.")
+        return cleaned_data

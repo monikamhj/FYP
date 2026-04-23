@@ -19,9 +19,10 @@ urlpatterns = [
     path('logout/', views.logout_view, name='logout'),
     path('course/', views.course_view, name='course'),
     path('report/', views.attendance_report_view, name='attendance_report'),
-    path('forgot-password/', views.ForgotPassword, name='forgot-password'),
-    path('password-reset-sent/<str:reset_id>/', views.PasswordResetSent, name='password-reset-sent'),
-    path('reset-password/<str:reset_id>/', views.ResetPassword, name='reset-password'),
+    path('forgot-password/', views.forgot_password_view, name='forgot-password'),
+    path('verify-password-otp/', views.verify_password_otp_view, name='verify-password-otp'),
+    path('resend-password-otp/', views.resend_password_otp_view, name='resend-password-otp'),
+    path('reset-password/', views.reset_password_view, name='reset-password'),
     path('cancel_capture/<int:student_id>/', views.cancel_capture, name='cancel_capture'),
     path('submit-leave/', submit_leave, name='submit_leave'),
 ]

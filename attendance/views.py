@@ -2,8 +2,7 @@ from datetime import date, timedelta
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import HttpResponse, JsonResponse, StreamingHttpResponse
 from django.contrib.auth.hashers import make_password, check_password
-from .forms import StudentForm
-from .models import Student, Attendance, PasswordReset
+from .models import Student, Attendance, PasswordResetOTP
 from collections import defaultdict
 from django.contrib import messages
 from django.contrib.auth import login
@@ -22,16 +21,24 @@ from django.contrib.auth.models import User
 from django.core.mail import EmailMessage
 from django.urls import reverse
 from django.conf import settings
-import datetime
 from django.views.decorators.csrf import csrf_exempt
 from .models import LeaveRequest
 from django.views.decorators.http import require_POST
 import json
 from django.db.models import Min, Max
-from .forms import StudentForm, LeaveRequestForm
+import logging
+from smtplib import SMTPException
+from .forms import (
+    StudentForm,
+    LeaveRequestForm,
+    PasswordResetRequestForm,
+    OTPVerificationForm,
+    PasswordResetWithOTPForm,
+)
 
 # In-memory capture state
 capture_progress = defaultdict(lambda: {"count": 0, "done": False})
+logger = logging.getLogger(__name__)
 
 # Load models
 embedder = FaceNet()
@@ -187,69 +194,142 @@ def attendance_report_view(request):
         'total_leave': sum(1 for r in attendance_status if r['status'] == 'On Leave'),
     })
 
-def ForgotPassword(request):
-    if request.method == 'POST':
-        email = request.POST.get('email')
-        try:
-            student = Student.objects.get(email=email)
-            reset = PasswordReset.objects.create(user=student)
-            reset_url = request.build_absolute_uri(
-                reverse('reset-password', kwargs={'reset_id': reset.reset_id})
-            )
-            email_body = f'Reset your password using the link below:\n\n{reset_url}'
-            EmailMessage(
-                'Reset your password',
-                email_body,
-                settings.EMAIL_HOST_USER,
-                [email]
-            ).send()
-            return redirect('password-reset-sent', reset_id=reset.reset_id)
-        except Student.DoesNotExist:
-            messages.error(request, f"No user with email '{email}' found")
-            return redirect('forgot-password')
-    return render(request, 'forgot_password.html')
+def _send_password_reset_otp_email(student, otp):
+    subject = "Your password reset OTP"
+    expiry_minutes = getattr(settings, "PASSWORD_RESET_OTP_EXPIRY_MINUTES", 10)
+    body = (
+        f"Hi {student.name},\n\n"
+        f"Use this OTP to reset your password: {otp}\n"
+        f"This OTP expires in {expiry_minutes} minutes.\n\n"
+        "If you did not request this, please ignore this email."
+    )
+    from_email = (
+        getattr(settings, "DEFAULT_FROM_EMAIL", None)
+        or getattr(settings, "EMAIL_HOST_USER", None)
+        or "no-reply@example.com"
+    )
+    EmailMessage(subject, body, from_email, [student.email]).send(fail_silently=False)
 
-def ResetPassword(request, reset_id):
+
+def forgot_password_view(request):
+    form = PasswordResetRequestForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        email = form.cleaned_data["email"]
+        student = Student.objects.filter(email=email).first()
+
+        # Avoid account enumeration by returning the same success page.
+        if student:
+            otp_obj, raw_otp = PasswordResetOTP.generate_for_user(student)
+            try:
+                _send_password_reset_otp_email(student, raw_otp)
+                request.session["password_reset_otp_id"] = otp_obj.id
+            except SMTPException:
+                otp_obj.delete()
+                logger.exception("Failed to send password reset OTP email.")
+                messages.error(request, "Email service is unavailable. Please try again shortly.")
+                return redirect("forgot-password")
+
+        messages.success(request, "If this email is registered, an OTP has been sent.")
+        return redirect("verify-password-otp")
+    elif request.method == "POST":
+        for field_errors in form.errors.values():
+            for error in field_errors:
+                messages.error(request, error)
+
+    return render(request, "attendance/forgot_password.html", {"form": form})
+
+
+def resend_password_otp_view(request):
+    if request.method != "POST":
+        return redirect("forgot-password")
+
+    otp_id = request.session.get("password_reset_otp_id")
+    otp_obj = PasswordResetOTP.objects.filter(id=otp_id, is_used=False).select_related("user").first()
+    if not otp_obj or otp_obj.is_expired():
+        messages.error(request, "Reset session expired. Please request a new OTP.")
+        request.session.pop("password_reset_otp_id", None)
+        request.session.pop("password_reset_verified", None)
+        return redirect("forgot-password")
+
+    new_otp_obj, raw_otp = PasswordResetOTP.generate_for_user(otp_obj.user)
     try:
-        reset = PasswordReset.objects.get(reset_id=reset_id)
-    except PasswordReset.DoesNotExist:
-        messages.error(request, 'Invalid reset id')
-        return redirect('forgot-password')
+        _send_password_reset_otp_email(otp_obj.user, raw_otp)
+        request.session["password_reset_otp_id"] = new_otp_obj.id
+        request.session["password_reset_verified"] = False
+        messages.success(request, "A new OTP has been sent to your email.")
+        return redirect("verify-password-otp")
+    except SMTPException:
+        new_otp_obj.delete()
+        logger.exception("Failed to resend password reset OTP email.")
+        messages.error(request, "Email service is unavailable. Please try again shortly.")
+        return redirect("forgot-password")
 
-    if request.method == 'POST':
-        password = request.POST.get('password')
-        confirm_password = request.POST.get('confirm_password')
-        errors = False
 
-        if password != confirm_password:
-            messages.error(request, 'Passwords do not match')
-            errors = True
-        if len(password) < 5:
-            messages.error(request, 'Password must be at least 5 characters long')
-            errors = True
-        if timezone.now() > reset.created_when + datetime.timedelta(minutes=10):
-            reset.delete()
-            messages.error(request, 'Reset link has expired')
-            errors = True
+def verify_password_otp_view(request):
+    otp_id = request.session.get("password_reset_otp_id")
+    otp_obj = PasswordResetOTP.objects.filter(id=otp_id).first()
+    if not otp_obj or otp_obj.is_used or otp_obj.is_expired():
+        messages.error(request, "Reset session expired. Please request a new OTP.")
+        request.session.pop("password_reset_otp_id", None)
+        request.session.pop("password_reset_verified", None)
+        return redirect("forgot-password")
 
-        if not errors:
-            user = reset.user
-            user.password = make_password(password)
-            user.save()
-            reset.delete()
-            messages.success(request, 'Password reset. Proceed to login')
-            return redirect('login_view')
+    form = OTPVerificationForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        raw_otp = form.cleaned_data["otp"]
+        if otp_obj.verify_otp(raw_otp):
+            request.session["password_reset_verified"] = True
+            messages.success(request, "OTP verified. Set your new password.")
+            return redirect("reset-password")
 
-        return redirect('reset-password', reset_id=reset_id)
+        otp_obj.attempts += 1
+        if otp_obj.attempts >= 5:
+            otp_obj.is_used = True
+            otp_obj.save(update_fields=["attempts", "is_used"])
+            messages.error(request, "Too many invalid attempts. Request a new OTP.")
+            request.session.pop("password_reset_otp_id", None)
+            request.session.pop("password_reset_verified", None)
+            return redirect("forgot-password")
+        otp_obj.save(update_fields=["attempts"])
+        messages.error(request, "Invalid OTP.")
+    elif request.method == "POST":
+        for field_errors in form.errors.values():
+            for error in field_errors:
+                messages.error(request, error)
 
-    return render(request, 'reset_password.html')
+    return render(
+        request,
+        "attendance/verify_otp.html",
+        {"form": form, "email": otp_obj.user.email},
+    )
 
-def PasswordResetSent(request, reset_id):
-    if PasswordReset.objects.filter(reset_id=reset_id).exists():
-        return render(request, 'password_reset_sent.html')
-    else:
-        messages.error(request, 'Invalid reset id')
-        return redirect('forgot-password')
+
+def reset_password_view(request):
+    otp_id = request.session.get("password_reset_otp_id")
+    is_verified = request.session.get("password_reset_verified", False)
+    otp_obj = PasswordResetOTP.objects.filter(id=otp_id, is_used=False).select_related("user").first()
+    if not otp_obj or otp_obj.is_expired() or not is_verified:
+        messages.error(request, "Please verify OTP first.")
+        return redirect("forgot-password")
+
+    form = PasswordResetWithOTPForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        student = otp_obj.user
+        student.password = make_password(form.cleaned_data["password"])
+        student.save(update_fields=["password"])
+        otp_obj.is_used = True
+        otp_obj.save(update_fields=["is_used"])
+
+        request.session.pop("password_reset_otp_id", None)
+        request.session.pop("password_reset_verified", None)
+        messages.success(request, "Password reset successful. Please log in.")
+        return redirect("login_view")
+    elif request.method == "POST":
+        for field_errors in form.errors.values():
+            for error in field_errors:
+                messages.error(request, error)
+
+    return render(request, "attendance/reset_password.html", {"form": form})
 
 def course_view(request):
     return render(request, 'attendance/course.html')
