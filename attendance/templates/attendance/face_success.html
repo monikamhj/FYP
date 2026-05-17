@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Attendance Status</title>
+    <title>Face Registration Complete</title>
 
     <style>
         body {
@@ -29,14 +29,8 @@
             margin-bottom: 15px;
         }
 
-        .status-checkin {
-            color: #10b981; /* green */
-            font-size: 20px;
-            font-weight: bold;
-        }
-
-        .status-checkout {
-            color: #ef4444; /* red */
+        .status-success {
+            color: #10b981;
             font-size: 20px;
             font-weight: bold;
         }
@@ -74,19 +68,12 @@
 <body>
     <div class="card">
 
-        {% if status and "Check-Out" in status %}
-            <h2 class="status-checkout">⏳ Check-Out Successful!</h2>
-            <p>Goodbye, <strong>{{ student.name }}</strong></p>
-        {% elif status and "Check-In" in status %}
-            <h2 class="status-checkin">✔ Check-In Successful!</h2>
-            <p>Welcome, <strong>{{ student.name }}</strong></p>
-        {% else %}
-            <h2>Attendance Recorded</h2>
-            <p><strong>{{ student.name }}</strong></p>
-        {% endif %}
+        <h2 class="status-success">Face Registered Successfully!</h2>
+        <p>Your face has been saved, <strong>{{ student.name }}</strong>.</p>
+        <p style="font-size: 15px; opacity: 0.8;">You can now log in and mark attendance when needed.</p>
 
         <div class="time-box">
-            Recorded at: <strong>{{ time|date:"H:i:s" }}</strong>
+            Completed at: <strong>{{ time|date:"H:i:s" }}</strong>
         </div>
 
         <p>ID: {{ student.student_id }}</p>

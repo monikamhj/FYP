@@ -6,7 +6,7 @@ from .models import Student, Attendance, PasswordResetOTP
 from collections import defaultdict
 from django.contrib import messages
 from django.contrib.auth import login
-from .utils import export_attendance_pdf
+from .utils import export_attendance_pdf, build_monthly_attendance_status
 import calendar
 import pandas as pd
 import cv2
@@ -70,103 +70,12 @@ def attendance_report_view(request):
     student_id = request.session['student_id']
     student = get_object_or_404(Student, student_id=student_id)
 
-    today = date.today()
+    today = timezone.localdate()
     month = int(request.GET.get('month', today.month))
     year = int(request.GET.get('year', today.year))
 
-    # Calculate days in month
-    _, num_days = calendar.monthrange(year, month)
-    last_day_date = date(year, month, num_days)
-    
-    # We only show records up to 'today' if viewing current month
-    limit_date = min(last_day_date, today)
-    all_dates = [date(year, month, day) for day in range(1, limit_date.day + 1)]
-
-    # 1. Fetch Attendance
-    # 1. Fetch and aggregate Attendance
-    attendance_agg = Attendance.objects.filter(
-    student=student, date__year=year, date__month=month
-).values('date').annotate(
-    first_check_in=Min('check_in'),
-    last_check_out=Max('check_out')
-)
-
-
-    attendance_map = {
-    rec['date']: {
-        'check_in': rec['first_check_in'],
-        'check_out': rec['last_check_out']
-    } for rec in attendance_agg
-}
-
-    # 2. Fetch Approved Leave Requests
-    leaves = LeaveRequest.objects.filter(
-        student=student, 
-        from_date__lte=last_day_date, 
-        to_date__gte=date(year, month, 1)
-    )
-
-    # 3. Comprehensive Nepali Public Holidays 2026
-    public_holidays = {
-        date(2026, 1, 11): "Prithvi Jayanti",
-        date(2026, 1, 14): "Maghe Sankranti",
-        date(2026, 1, 30): "Martyrs' Day",
-        date(2026, 2, 15): "Maha Shivaratri",
-        date(2026, 2, 18): "Gyalpo Lhosar",
-        date(2026, 2, 19): "Prajatantra Diwas",
-        date(2026, 3, 2): "Holi (Hilly Region)",
-        date(2026, 3, 3): "Holi (Terai Region)",
-        date(2026, 3, 8): "Women's Day",
-        date(2026, 4, 14): "Nepali New Year",
-        date(2026, 5, 1): "Labour Day / Buddha Jayanti",
-        date(2026, 5, 29): "Republic Day",
-        date(2026, 9, 19): "Constitution Day",
-        date(2026, 10, 21): "Dashain (Vijaya Dashami)",
-        date(2026, 11, 11): "Bhai Tika (Tihar)",
-    }
-
-    attendance_status = []
-    for d in all_dates:
-        record = attendance_map.get(d)
-        on_leave = leaves.filter(from_date__lte=d, to_date__gte=d).exists()
-        holiday_name = public_holidays.get(d)
-        is_saturday = (d.weekday() == 5)
-
-        # Determine Logic Status
-        if is_saturday:
-            status = 'Weekend'
-        elif holiday_name:
-            status = f'Holiday ({holiday_name})'
-        elif on_leave:
-            status = 'On Leave'
-        elif record:
-            status = 'Present'
-        else:
-            status = 'Absent'
-
-        # Calculate times with Nepal timezone conversion (+5:45)
-        check_in_str = "—"
-        check_out_str = "—"
-
-        if record and record['check_in']:
-            # Convert UTC to Nepal Time (UTC+5:45)
-            utc_time = record['check_in']
-            nepal_time = utc_time + timedelta(hours=5, minutes=45)
-            check_in_str = nepal_time.strftime("%H:%M:%S")
-
-        if record and record['check_out']:
-            # Convert UTC to Nepal Time (UTC+5:45)
-            utc_time = record['check_out']
-            nepal_time = utc_time + timedelta(hours=5, minutes=45)
-            check_out_str = nepal_time.strftime("%H:%M:%S")
-
-        attendance_status.append({
-            'date': d.strftime("%Y-%m-%d"),
-            'day': d.strftime("%A"),
-            'status': status,
-            'check_in': check_in_str,
-            'check_out': check_out_str,
-        })
+    report = build_monthly_attendance_status(student, month=month, year=year)
+    attendance_status = report["attendance_status"]
 
     # Export Logic
     export_format = request.GET.get('format')
@@ -189,9 +98,9 @@ def attendance_report_view(request):
         'selected_year': year,
         'year_range': list(range(today.year - 5, today.year + 1)),
         'month_list': list(range(1, 13)),
-        'total_present': sum(1 for r in attendance_status if r['status'] == 'Present'),
-        'total_absent': sum(1 for r in attendance_status if r['status'] == 'Absent'),
-        'total_leave': sum(1 for r in attendance_status if r['status'] == 'On Leave'),
+        'total_present': report['total_present'],
+        'total_absent': report['total_absent'],
+        'total_leave': report['total_leave'],
     })
 
 def _send_password_reset_otp_email(student, otp):
@@ -408,8 +317,25 @@ def delete_leave_request_view(request, leave_id):
 def dashboard_view(request):
     if 'student_id' not in request.session:
         return redirect('login_view')
+
+    student = get_object_or_404(Student, student_id=request.session['student_id'])
+    today = timezone.localdate()
+    month = int(request.GET.get('month', today.month))
+    year = int(request.GET.get('year', today.year))
+
+    report = build_monthly_attendance_status(student, month=month, year=year)
+
     return render(request, 'attendance/dashboard.html', {
-        'student_name': request.session.get('student_name')
+        'student_name': request.session.get('student_name', student.name),
+        'student': student,
+        'attendance_status': report['attendance_status'],
+        'total_present': report['total_present'],
+        'total_absent': report['total_absent'],
+        'total_leave': report['total_leave'],
+        'selected_month': month,
+        'selected_year': year,
+        'year_range': list(range(today.year - 5, today.year + 1)),
+        'month_list': list(range(1, 13)),
     })
 
 def login_view(request):
@@ -540,46 +466,11 @@ def check_capture_progress(request, student_id):
     return JsonResponse(capture_progress.get(student_id, {"count": 0, "done": False}))
 
 def face_success(request, student_id):
-    student = Student.objects.get(student_id=student_id)
-    today = date.today()
-    now = timezone.now()
-
-    # Latest attendance entry for today
-    last_record = (
-        Attendance.objects
-        .filter(student=student, date=today)
-        .order_by('-id')
-        .first()
-    )
-
-    # Case 1: no record today → first CHECK-IN
-    if last_record is None:
-        Attendance.objects.create(
-            student=student,
-            date=today,
-            check_in=now
-        )
-        status = "Check-In Successful"
-
-    # Case 2: open session → CHECK-OUT
-    elif last_record.check_out is None:
-        last_record.check_out = now
-        last_record.save()
-        status = "Check-Out Successful"
-
-    # Case 3: last session closed → start NEW CHECK-IN
-    else:
-        Attendance.objects.create(
-            student=student,
-            date=today,
-            check_in=now
-        )
-        status = "Check-In Successful"
-
+    """Shown after face registration completes. Does not record attendance."""
+    student = get_object_or_404(Student, student_id=student_id)
     return render(request, "attendance/face_success.html", {
         "student": student,
-        "status": status,
-        "time": now,
+        "time": timezone.now(),
     })
 
 

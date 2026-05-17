@@ -93,6 +93,58 @@ def mark_attendance(student, min_interval_seconds=60):
 
     return status, now
 
+
+def draw_success_message(frame, student_name, status):
+    """Draw a prominent success banner on the camera frame."""
+    overlay = frame.copy()
+    h, w = frame.shape[:2]
+    cv2.rectangle(overlay, (0, 0), (w, h), (0, 0, 0), -1)
+    frame[:] = cv2.addWeighted(overlay, 0.35, frame, 0.65, 0)
+
+    if "Check-In" in status:
+        title = "Check-In Successful!"
+        color = (0, 200, 0)
+    elif "Check-Out" in status:
+        title = "Check-Out Successful!"
+        color = (0, 140, 255)
+    else:
+        title = status
+        color = (0, 255, 255)
+
+    cv2.putText(
+        frame, title, (40, h // 2 - 40),
+        cv2.FONT_HERSHEY_SIMPLEX, 1.2, color, 3, cv2.LINE_AA,
+    )
+    cv2.putText(
+        frame, student_name, (40, h // 2 + 10),
+        cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), 2, cv2.LINE_AA,
+    )
+    cv2.putText(
+        frame, "Press Q to quit", (40, h // 2 + 55),
+        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (220, 220, 220), 2, cv2.LINE_AA,
+    )
+
+
+def cleanup_camera(cap):
+    cap.release()
+    cv2.destroyAllWindows()
+
+
+def show_success_and_exit(cap, frame, student_name, status, display_seconds=2.5):
+    """Show success overlay briefly; allow early exit with Q."""
+    draw_success_message(frame, student_name, status)
+    cv2.imshow("Face Recognition", frame)
+    print(f"SUCCESS: {status} for {student_name}")
+
+    end_time = time.time() + display_seconds
+    while time.time() < end_time:
+        key = cv2.waitKey(50) & 0xFF
+        if key == ord("q"):
+            break
+
+    cleanup_camera(cap)
+
+
 # ----------------------------
 # FACE RECOGNITION LOOP
 # ----------------------------
@@ -107,9 +159,11 @@ def recognize_face():
         print("❌ Could not open camera.")
         return
 
-    print("🎥 Starting face recognition...")
+    print("Starting face recognition... Press Q to quit.")
 
     recognized_faces = {}  # matched_id -> {"coords": (x,y,w,h), "status": status, "last_seen": timestamp}
+    window_name = "Face Recognition"
+    cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
 
     while True:
         ret, frame = cap.read()
@@ -146,20 +200,14 @@ def recognize_face():
                     student = Student.objects.get(student_id=matched_id)
                     status, _ = mark_attendance(student, min_interval_seconds=60)
                     recognized_faces[matched_id]["status"] = status
-                    print(f"✅ {status} for {student.name}")
-                    
-                    # ⬇️ keep window visible briefly, then quit
-                    
+                    print(f"{status} for {student.name}")
+
                     if status in ["Check-In Successful", "Check-Out Successful"]:
-                        cv2.imshow("Face Recognition", frame)   # show final frame
-                        cv2.waitKey(2000)                       # 2000 ms = 2 second
-                        cap.release()
-                        cv2.destroyAllWindows()
+                        show_success_and_exit(cap, frame, student.name, status)
                         return
 
-
                 except Student.DoesNotExist:
-                    print(f"❌ Student with ID {matched_id} not found.")
+                    print(f"Student with ID {matched_id} not found.")
 
         # Draw all recognized faces persistently
         for info in recognized_faces.values():
@@ -177,12 +225,16 @@ def recognize_face():
             cv2.rectangle(frame, (x, y), (x+w, y+h), color, 2)
             cv2.putText(frame, f"{status}", (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.8, color, 2)
 
-        cv2.imshow("Face Recognition", frame)
-        if cv2.waitKey(1) & 0xFF == ord('q'):
+        cv2.putText(
+            frame, "Press Q to quit", (10, 30),
+            cv2.FONT_HERSHEY_SIMPLEX, 0.7, (200, 200, 200), 2, cv2.LINE_AA,
+        )
+        cv2.imshow(window_name, frame)
+        if cv2.waitKey(1) & 0xFF == ord("q"):
+            print("Quit requested. Closing camera...")
             break
 
-    cap.release()
-    cv2.destroyAllWindows()
+    cleanup_camera(cap)
 
 # ----------------------------
 # MAIN
