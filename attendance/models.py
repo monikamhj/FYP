@@ -80,6 +80,20 @@ class PasswordResetOTP(models.Model):
         return check_password(raw_otp, self.otp_hash)
 
 
+class StudentTodo(models.Model):
+    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='todos')
+    text = models.CharField(max_length=200)
+    is_done = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['is_done', '-created_at']
+
+    def __str__(self):
+        return f"{self.student.name}: {self.text[:40]}"
+
+
 class LeaveRequest(models.Model):
     STATUS_CHOICES = [
         ('pending', 'Pending'),
@@ -117,7 +131,10 @@ class LeaveRequest(models.Model):
 
         # If this is a new request (not an edit) and count is already 2
         if not self.pk and leave_count >= 2:
-            raise ValidationError(f"You have already submitted {leave_count} leave requests for this month. The limit is 2.")
+            raise ValidationError(
+                "You have already taken two leaves this month. "
+                "Only 2 leave applications are allowed per month."
+            )
 
     def save(self, *args, **kwargs):
         self.full_clean() # Ensures clean() is called before saving

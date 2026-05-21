@@ -1,0 +1,9 @@
+{% if messages %}
+  <ul class="auth-messages">
+    {% for message in messages %}
+      <li class="auth-message {% if 'success' in message.tags %}auth-message--success{% elif 'warning' in message.tags %}auth-message--warning{% else %}auth-message--error{% endif %}">
+        {{ message }}
+      </li>
+    {% endfor %}
+  </ul>
+{% endif %}

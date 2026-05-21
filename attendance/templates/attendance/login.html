@@ -17,13 +17,7 @@
             <h1 class="student-heading">Student Login</h1>
             <p class="student-subheading">Enter your credentials to access the student panel</p>
 
-            {% if messages %}
-              <ul class="login-errors">
-                {% for message in messages %}
-                  <li>{{ message }}</li>
-                {% endfor %}
-              </ul>
-            {% endif %}
+            {% include 'attendance/includes/auth_messages.html' %}
 
             <form id="login-form" method="POST" action="{% url 'login_view' %}">
                 {% csrf_token %}

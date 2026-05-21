@@ -1,8 +1,10 @@
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
+from django.core.exceptions import ValidationError
+from io import BytesIO
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import HttpResponse, JsonResponse, StreamingHttpResponse
 from django.contrib.auth.hashers import make_password, check_password
-from .models import Student, Attendance, PasswordResetOTP
+from .models import Student, Attendance, PasswordResetOTP, StudentTodo
 from collections import defaultdict
 from django.contrib import messages
 from django.contrib.auth import login
@@ -23,7 +25,7 @@ from django.urls import reverse
 from django.conf import settings
 from django.views.decorators.csrf import csrf_exempt
 from .models import LeaveRequest
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_POST, require_http_methods
 import json
 from django.db.models import Min, Max
 import logging
@@ -80,11 +82,25 @@ def attendance_report_view(request):
     # Export Logic
     export_format = request.GET.get('format')
     if export_format == 'excel':
-        df = pd.DataFrame(attendance_status)
-        df.columns = ['Date', 'Day', 'Status', 'Check-In', 'Check-Out']
-        response = HttpResponse(content_type='application/vnd.ms-excel')
+        export_rows = [
+            {
+                'Date': row['date'],
+                'Day': row['day'],
+                'Check-In': row['check_in'],
+                'Check-Out': row['check_out'],
+                'Status': row['status'],
+            }
+            for row in attendance_status
+        ]
+        df = pd.DataFrame(export_rows)
+        buffer = BytesIO()
+        df.to_excel(buffer, index=False, engine='openpyxl')
+        buffer.seek(0)
+        response = HttpResponse(
+            buffer.getvalue(),
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        )
         response['Content-Disposition'] = f'attachment; filename=attendance_{year}_{month}.xlsx'
-        df.to_excel(response, index=False)
         return response
     
     elif export_format == 'pdf':
@@ -314,6 +330,69 @@ def delete_leave_request_view(request, leave_id):
     messages.success(request, "Leave request deleted.")
     return redirect('leave_history')
 
+def _get_logged_in_student(request):
+    if 'student_id' not in request.session:
+        return None
+    return get_object_or_404(Student, student_id=request.session['student_id'])
+
+
+def _serialize_todo(todo):
+    return {
+        'id': todo.id,
+        'text': todo.text,
+        'done': todo.is_done,
+    }
+
+
+@require_http_methods(['GET', 'POST'])
+def student_todos_api(request):
+    student = _get_logged_in_student(request)
+    if not student:
+        return JsonResponse({'error': 'Unauthorized'}, status=401)
+
+    if request.method == 'GET':
+        todos = StudentTodo.objects.filter(student=student)
+        return JsonResponse({'todos': [_serialize_todo(t) for t in todos]})
+
+    try:
+        data = json.loads(request.body.decode('utf-8'))
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return JsonResponse({'error': 'Invalid JSON'}, status=400)
+
+    text = (data.get('text') or '').strip()
+    if not text:
+        return JsonResponse({'error': 'Task text is required'}, status=400)
+    if len(text) > 200:
+        return JsonResponse({'error': 'Task text must be 200 characters or fewer'}, status=400)
+
+    todo = StudentTodo.objects.create(student=student, text=text)
+    return JsonResponse({'todo': _serialize_todo(todo)}, status=201)
+
+
+@require_http_methods(['PATCH', 'DELETE'])
+def student_todo_detail_api(request, todo_id):
+    student = _get_logged_in_student(request)
+    if not student:
+        return JsonResponse({'error': 'Unauthorized'}, status=401)
+
+    todo = get_object_or_404(StudentTodo, id=todo_id, student=student)
+
+    if request.method == 'DELETE':
+        todo.delete()
+        return JsonResponse({'success': True})
+
+    try:
+        data = json.loads(request.body.decode('utf-8'))
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return JsonResponse({'error': 'Invalid JSON'}, status=400)
+
+    if 'done' in data:
+        todo.is_done = bool(data['done'])
+        todo.save(update_fields=['is_done', 'updated_at'])
+
+    return JsonResponse({'todo': _serialize_todo(todo)})
+
+
 def dashboard_view(request):
     if 'student_id' not in request.session:
         return redirect('login_view')
@@ -479,50 +558,78 @@ def cancel_capture(request, student_id):
     capture_progress[student_id] = {"count": 0, "done": True, "cancelled": True}
     return JsonResponse({'status': 'cancelled'})
 
+MONTHLY_LEAVE_LIMIT = 2
+MONTHLY_LEAVE_LIMIT_MESSAGE = (
+    "You have already taken two leaves this month. "
+    "Only 2 leave applications are allowed per month."
+)
+
+
+def _parse_leave_date(value):
+    if isinstance(value, date):
+        return value
+    return datetime.strptime(value, "%Y-%m-%d").date()
+
+
+def _monthly_leave_count(student, from_date):
+    return LeaveRequest.objects.filter(
+        student=student,
+        from_date__month=from_date.month,
+        from_date__year=from_date.year,
+    ).count()
+
+
 @csrf_exempt
 @require_POST
 def submit_leave(request):
     try:
-        print("📥 POST request received at /submit-leave/")
-        print("📦 Raw body:", request.body)
-
         data = json.loads(request.body)
         student_id = request.session.get('student_id')
-        print("🆔 Session student_id:", student_id)
 
         if not student_id:
-            print("❌ No student_id found in session.")
             return JsonResponse({'error': 'Unauthorized'}, status=401)
 
         try:
             student = Student.objects.get(student_id=student_id)
         except Student.DoesNotExist:
-            print("❌ Student not found for ID:", student_id)
             return JsonResponse({'error': 'Student not found'}, status=404)
 
-        from_date = data.get('from_date')
-        to_date = data.get('to_date') or from_date
-        reason = data.get('reason')
-        category = data.get('category', 'other')  # Get category from data, default to 'other'
+        from_date_raw = data.get('from_date')
+        to_date_raw = data.get('to_date') or from_date_raw
+        reason = (data.get('reason') or '').strip()
+        category = data.get('category', 'other')
 
-        print("📅 From:", from_date)
-        print("📅 To:", to_date)
-        print("📝 Reason:", reason)
-        print("🏷️ Category:", category)  # Add this debug print
+        if not from_date_raw:
+            return JsonResponse({'error': 'Please select a start date.'}, status=400)
+        if not reason:
+            return JsonResponse({'error': 'Please provide a reason for your leave.'}, status=400)
 
-        # FIXED: Include the category field when creating the LeaveRequest
-        leave = LeaveRequest.objects.create(
+        try:
+            from_date = _parse_leave_date(from_date_raw)
+            to_date = _parse_leave_date(to_date_raw)
+        except (TypeError, ValueError):
+            return JsonResponse({'error': 'Invalid date format.'}, status=400)
+
+        if _monthly_leave_count(student, from_date) >= MONTHLY_LEAVE_LIMIT:
+            return JsonResponse({'error': MONTHLY_LEAVE_LIMIT_MESSAGE}, status=400)
+
+        leave = LeaveRequest(
             student=student,
             from_date=from_date,
             to_date=to_date,
             reason=reason,
-            category=category  # Add this line
+            category=category,
         )
-        print("✅ LeaveRequest created:", leave)
-        print("✅ Saved category:", leave.category)  # Verify what was saved
+        try:
+            leave.save()
+        except ValidationError as exc:
+            error_message = exc.messages[0] if getattr(exc, "messages", None) else str(exc)
+            return JsonResponse({'error': error_message}, status=400)
 
-        return JsonResponse({'message': 'Leave application submitted! ✅'})
+        return JsonResponse({'message': 'Leave application submitted successfully.'})
 
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid request data.'}, status=400)
     except Exception as e:
-        print("🔥 Exception:", e)
-        return JsonResponse({'error': str(e)}, status=500)
+        logger.exception("submit_leave failed")
+        return JsonResponse({'error': 'Something went wrong. Please try again.'}, status=500)

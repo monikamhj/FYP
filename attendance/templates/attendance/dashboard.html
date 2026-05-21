@@ -15,88 +15,7 @@
 
 <body>
   <div class="main-container">
-    <div class="sidebar">
-      <div class="sidebar-header"></div>
-
-      <div class="logo-container">
-        <h1 class="sidebar-title">Attendify</h1>
-      </div>
-
-      <div class="sidebar-menu">
-        <a href="/dashboard/" class="sidebar-item active">
-          <div class="sidebar-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-              <polyline points="9 22 9 12 15 12 15 22"></polyline>
-            </svg>
-          </div>
-          <span class="sidebar-label">Home</span>
-        </a>
-        <a href="{% url 'attendance_report' %}?month={{ selected_month }}&year={{ selected_year }}" class="sidebar-item">
-          <div class="sidebar-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-              <line x1="16" y1="2" x2="16" y2="6"></line>
-              <line x1="8" y1="2" x2="8" y2="6"></line>
-              <line x1="3" y1="10" x2="21" y2="10"></line>
-              <path d="m9 16 2 2 4-4"></path>
-            </svg>
-          </div>
-          <span class="sidebar-label">Attendance</span>
-        </a>
-        <a href="/course/" class="sidebar-item">
-          <div class="sidebar-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
-              <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
-            </svg>
-          </div>
-          <span class="sidebar-label">Courses</span>
-        </a>
-        <a href="/leave/" class="sidebar-item">
-          <div class="sidebar-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-              <polyline points="14 2 14 8 20 8"></polyline>
-              <line x1="16" y1="13" x2="8" y2="13"></line>
-              <line x1="16" y1="17" x2="8" y2="17"></line>
-              <polyline points="10 9 9 9 8 9"></polyline>
-            </svg>
-          </div>
-          <span class="sidebar-label">Apply for Leave</span>
-        </a>
-
-        <a href="/leave/history/" class="sidebar-item">
-          <div class="sidebar-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M3 3v5h5"></path>
-              <path d="M3.05 13a9 9 0 1 0 .5-4.5L3 8"></path>
-              <path d="M12 7v5l4 2"></path>
-            </svg>
-          </div>
-          <span class="sidebar-label">Leave History</span>
-        </a>
-      </div>
-
-      <div class="sidebar-footer">
-        <a href="/logout" class="sidebar-item">
-          <div class="sidebar-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-              <polyline points="16 17 21 12 16 7"></polyline>
-              <line x1="21" y1="12" x2="9" y2="12"></line>
-            </svg>
-          </div>
-          <span class="sidebar-label">Logout</span>
-        </a>
-      </div>
-    </div>
+    {% include 'attendance/navbar.html' with active_page='dashboard' %}
 
     <!-- Main content -->
     <div class="content">
@@ -169,30 +88,18 @@
   <!-- ============ TO-DO LIST SCRIPT ============ -->
   <script>
     (function () {
-      const STORAGE_KEY = 'attendify_todos';
+      const TODOS_URL = '{% url "student_todos_api" %}';
+      const TODO_DETAIL_URL = '{% url "student_todo_detail_api" todo_id=0 %}'.replace('/0/', '/');
+      const CSRF_TOKEN = '{{ csrf_token }}';
+
       const listEl   = document.getElementById('todoList');
       const formEl   = document.getElementById('todoAddForm');
       const inputEl  = document.getElementById('todoInput');
       const countEl  = document.getElementById('todoCount');
       const emptyEl  = document.getElementById('todoEmpty');
 
-      // Load todos from localStorage
-      function loadTodos() {
-        try {
-          const raw = localStorage.getItem(STORAGE_KEY);
-          return raw ? JSON.parse(raw) : [];
-        } catch (e) {
-          return [];
-        }
-      }
+      let todos = [];
 
-      function saveTodos(todos) {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(todos));
-      }
-
-      let todos = loadTodos();
-
-      // Escape HTML to prevent XSS from user input
       function escapeHtml(str) {
         return str
           .replace(/&/g, '&amp;')
@@ -200,6 +107,24 @@
           .replace(/>/g, '&gt;')
           .replace(/"/g, '&quot;')
           .replace(/'/g, '&#39;');
+      }
+
+      function apiHeaders(method) {
+        const headers = { 'Content-Type': 'application/json' };
+        if (method !== 'GET') {
+          headers['X-CSRFToken'] = CSRF_TOKEN;
+        }
+        return headers;
+      }
+
+      async function loadTodos() {
+        const response = await fetch(TODOS_URL, { headers: apiHeaders('GET') });
+        if (!response.ok) {
+          throw new Error('Failed to load tasks');
+        }
+        const data = await response.json();
+        todos = data.todos || [];
+        render();
       }
 
       function render() {
@@ -238,42 +163,76 @@
         });
       }
 
-      // Add new todo
-      formEl.addEventListener('submit', function (e) {
+      formEl.addEventListener('submit', async function (e) {
         e.preventDefault();
         const text = inputEl.value.trim();
         if (!text) return;
-        todos.push({
-          id: Date.now().toString(),
-          text: text,
-          done: false,
-        });
-        saveTodos(todos);
-        inputEl.value = '';
-        render();
+
+        try {
+          const response = await fetch(TODOS_URL, {
+            method: 'POST',
+            headers: apiHeaders('POST'),
+            body: JSON.stringify({ text: text }),
+          });
+          if (!response.ok) {
+            throw new Error('Failed to add task');
+          }
+          const data = await response.json();
+          todos.push(data.todo);
+          inputEl.value = '';
+          render();
+        } catch (err) {
+          console.error(err);
+        }
       });
 
-      // Toggle complete + delete (event delegation)
-      listEl.addEventListener('click', function (e) {
+      listEl.addEventListener('click', async function (e) {
         const checkbox = e.target.closest('.todo-checkbox');
         const deleteBtn = e.target.closest('.todo-delete-btn');
 
         if (checkbox) {
           const id = checkbox.dataset.id;
-          todos = todos.map(t => t.id === id ? Object.assign({}, t, { done: checkbox.checked }) : t);
-          saveTodos(todos);
-          render();
+          try {
+            const response = await fetch(TODO_DETAIL_URL + id + '/', {
+              method: 'PATCH',
+              headers: apiHeaders('PATCH'),
+              body: JSON.stringify({ done: checkbox.checked }),
+            });
+            if (!response.ok) {
+              throw new Error('Failed to update task');
+            }
+            const data = await response.json();
+            todos = todos.map(t => t.id === data.todo.id ? data.todo : t);
+            render();
+          } catch (err) {
+            checkbox.checked = !checkbox.checked;
+            console.error(err);
+          }
         }
 
         if (deleteBtn) {
           const id = deleteBtn.dataset.id;
-          todos = todos.filter(t => t.id !== id);
-          saveTodos(todos);
-          render();
+          try {
+            const response = await fetch(TODO_DETAIL_URL + id + '/', {
+              method: 'DELETE',
+              headers: apiHeaders('DELETE'),
+            });
+            if (!response.ok) {
+              throw new Error('Failed to delete task');
+            }
+            todos = todos.filter(t => String(t.id) !== String(id));
+            render();
+          } catch (err) {
+            console.error(err);
+          }
         }
       });
 
-      render();
+      loadTodos().catch(function (err) {
+        console.error(err);
+        emptyEl.style.display = 'flex';
+        emptyEl.querySelector('p').textContent = 'Could not load your tasks. Please refresh the page.';
+      });
     })();
   </script>
 

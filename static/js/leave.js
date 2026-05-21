@@ -17,6 +17,7 @@ document.addEventListener('DOMContentLoaded', function() {
   const leaveForm = document.getElementById('leaveForm');
   const reasonInput = document.getElementById('reason');
   const toast = document.getElementById('toast');
+  const formAlert = document.getElementById('leaveFormAlert');
   const categoryInput = document.getElementById('category');
 
   // Initialize calendars
@@ -54,6 +55,7 @@ document.addEventListener('DOMContentLoaded', function() {
   // ✅ Form submission with AJAX
   leaveForm.addEventListener('submit', function(e) {
     e.preventDefault();
+    hideFormAlert();
 
     if (!fromDate) {
       showToast('Error', 'Please select a start date for your leave', 'error');
@@ -84,21 +86,29 @@ document.addEventListener('DOMContentLoaded', function() {
         from_date: fromDateStr,
         to_date: toDateStr,
         reason: reasonInput.value.trim(),
-        category: categoryInput.value // <--- THIS WAS MISSING
+        category: categoryInput.value
       })
     })
-    .then(res => res.json())
-    .then(data => {
+    .then(async (res) => {
+      const data = await res.json();
+      if (!res.ok) {
+        const errorText = data.error || 'Something went wrong. Try again.';
+        const isLimitError = errorText.toLowerCase().includes('two leaves');
+        showToast(
+          isLimitError ? 'Monthly limit reached' : 'Unable to submit',
+          errorText,
+          'error'
+        );
+        return;
+      }
       showToast('Success', data.message, 'success');
-      // Reset form
       fromDate = null;
       toDate = null;
       reasonInput.value = '';
-      categoryInput.value = ''; // Reset the dropdown too
+      categoryInput.value = '';
       updateCalendar(fromCalendarDays, currentFromMonth, 'from');
       updateCalendar(toCalendarDays, currentToMonth, 'to');
     })
-    // ... rest of your code
     .catch(err => {
       showToast('Error', 'Something went wrong. Try again.', 'error');
       console.error(err);
@@ -188,14 +198,37 @@ document.addEventListener('DOMContentLoaded', function() {
     return `${year}-${month}-${day}`; // Format for Django (YYYY-MM-DD)
   }
 
+  function hideFormAlert() {
+    if (!formAlert) return;
+    formAlert.hidden = true;
+    formAlert.textContent = '';
+    formAlert.className = 'form-alert';
+  }
+
+  function showFormAlert(message, type) {
+    if (!formAlert) return;
+    formAlert.textContent = message;
+    formAlert.className = `form-alert form-alert--${type}`;
+    formAlert.hidden = false;
+    formAlert.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
   function showToast(title, message, type) {
     const toastTitle = document.querySelector('.toast-title');
     const toastMessage = document.querySelector('.toast-message');
     toastTitle.textContent = title;
     toastMessage.textContent = message;
     toast.className = `toast show ${type}`;
+
+    if (type === 'error') {
+      showFormAlert(message, 'error');
+    } else {
+      hideFormAlert();
+    }
+
+    const duration = type === 'error' ? 8000 : 5000;
     setTimeout(() => {
       toast.className = 'toast';
-    }, 5000);
+    }, duration);
   }
 });

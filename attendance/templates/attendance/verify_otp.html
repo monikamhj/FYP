@@ -20,13 +20,7 @@
             <h1 class="student-heading">Verify OTP</h1>
             <p class="student-subheading">Enter the 6-digit OTP sent to {{ email }}</p>
 
-            {% if messages %}
-              <ul class="login-errors">
-                {% for message in messages %}
-                  <li>{{ message }}</li>
-                {% endfor %}
-              </ul>
-            {% endif %}
+            {% include 'attendance/includes/auth_messages.html' %}
 
             <form method="POST" action="{% url 'verify-password-otp' %}">
                 {% csrf_token %}
