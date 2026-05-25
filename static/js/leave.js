@@ -19,6 +19,7 @@ document.addEventListener('DOMContentLoaded', function() {
   const toast = document.getElementById('toast');
   const formAlert = document.getElementById('leaveFormAlert');
   const categoryInput = document.getElementById('category');
+  let toastHideTimer = null;
 
   // Initialize calendars
   updateCalendar(fromCalendarDays, currentFromMonth, 'from');
@@ -51,8 +52,6 @@ document.addEventListener('DOMContentLoaded', function() {
     updateMonthDisplay(currentMonthToEl, currentToMonth);
   });
 
-  // ✅ Form submission with AJAX
-  // ✅ Form submission with AJAX
   leaveForm.addEventListener('submit', function(e) {
     e.preventDefault();
     hideFormAlert();
@@ -90,10 +89,16 @@ document.addEventListener('DOMContentLoaded', function() {
       })
     })
     .then(async (res) => {
-      const data = await res.json();
+      let data = {};
+      try {
+        data = await res.json();
+      } catch (_) {
+        showToast('Error', 'Unexpected server response. Please try again.', 'error');
+        return;
+      }
       if (!res.ok) {
         const errorText = data.error || 'Something went wrong. Try again.';
-        const isLimitError = errorText.toLowerCase().includes('two leaves');
+        const isLimitError = isMonthlyLimitError(errorText);
         showToast(
           isLimitError ? 'Monthly limit reached' : 'Unable to submit',
           errorText,
@@ -101,7 +106,8 @@ document.addEventListener('DOMContentLoaded', function() {
         );
         return;
       }
-      showToast('Success', data.message, 'success');
+      const successMessage = data.message || 'Leave application submitted successfully.';
+      showToast('Success', successMessage, 'success');
       fromDate = null;
       toDate = null;
       reasonInput.value = '';
@@ -213,22 +219,34 @@ document.addEventListener('DOMContentLoaded', function() {
     formAlert.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
 
+  function isMonthlyLimitError(message) {
+    const text = (message || '').toLowerCase();
+    return (
+      text.includes('two leaves') ||
+      text.includes('2 leave') ||
+      text.includes('allowed per month')
+    );
+  }
+
   function showToast(title, message, type) {
-    const toastTitle = document.querySelector('.toast-title');
-    const toastMessage = document.querySelector('.toast-message');
+    const alertType = type === 'success' ? 'success' : 'error';
+    showFormAlert(message, alertType);
+
+    if (!toast) return;
+
+    const toastTitle = toast.querySelector('.toast-title');
+    const toastMessage = toast.querySelector('.toast-message');
+    if (!toastTitle || !toastMessage) return;
+
     toastTitle.textContent = title;
     toastMessage.textContent = message;
     toast.className = `toast show ${type}`;
 
-    if (type === 'error') {
-      showFormAlert(message, 'error');
-    } else {
-      hideFormAlert();
-    }
-
+    if (toastHideTimer) clearTimeout(toastHideTimer);
     const duration = type === 'error' ? 8000 : 5000;
-    setTimeout(() => {
+    toastHideTimer = setTimeout(() => {
       toast.className = 'toast';
+      toastHideTimer = null;
     }, duration);
   }
 });

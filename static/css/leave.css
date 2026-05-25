@@ -292,6 +292,14 @@
     border-left: 4px solid transparent;
   }
 
+  .form-alert[hidden] {
+    display: none !important;
+  }
+
+  .form-alert:not([hidden]) {
+    display: block;
+  }
+
   .form-alert--error {
     color: #feb2b2;
     background-color: rgba(245, 101, 101, 0.15);
